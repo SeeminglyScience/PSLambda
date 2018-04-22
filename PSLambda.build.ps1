@@ -1,4 +1,4 @@
-#requires -Module InvokeBuild, PSScriptAnalyzer, Pester, PlatyPS -Version 5.1
+#requires -Version 5.1
 [CmdletBinding()]
 param(
     [Parameter()]
