@@ -19,7 +19,7 @@ $script:Settings = @{
     Name          = $moduleName
     Manifest      = $manifest
     Version       = $manifest.Version
-    ShouldAnalyze = $true
+    ShouldAnalyze = $false
     ShouldTest    = $true
 }
 
