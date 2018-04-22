@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration>
+  <ViewDefinitions>
+    <View>
+      <Name>PSLambda.PSDelegate</Name>
+      <ViewSelectedBy>
+        <TypeName>PSLambda.PSDelegate</TypeName>
+      </ViewSelectedBy>
+      <WideControl>
+        <WideEntries>
+          <WideEntry>
+            <WideItem>
+              <PropertyName>ScriptBlock</PropertyName>
+            </WideItem>
+          </WideEntry>
+        </WideEntries>
+      </WideControl>
+    </View>
+  </ViewDefinitions>
+</Configuration>

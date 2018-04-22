@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Types>
+  <Type>
+    <Name>PSLambda.PSDelegate</Name>
+    <TypeConverter>
+        <TypeName>PSLambda.DelegateTypeConverter</TypeName>
+    </TypeConverter>
+  </Type>
+</Types>
