@@ -27,7 +27,7 @@ CompanyName = 'Community'
 Copyright = '(c) 2018 Patrick M. Meinecke. All rights reserved.'
 
 # Description of the functionality provided by this module
-# Description = ''
+Description = 'A runtime delegate compiler for PowerShell ScriptBlock objects.'
 
 # Minimum version of the Windows PowerShell engine required by this module
 PowerShellVersion = '5.1'
