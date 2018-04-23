@@ -89,7 +89,7 @@ There's two main ways to use the module.
 
 ```powershell
 $a = 0
-$delegate = { $a += 1 }
+$delegate = [psdelegate]{ $a += 1 }
 $actions = $delegate, $delegate, $delegate, $delegate
 [System.Threading.Tasks.Parallel]::Invoke($actions)
 $a
