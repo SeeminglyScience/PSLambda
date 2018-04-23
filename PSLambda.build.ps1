@@ -35,6 +35,7 @@ $script:Folders  = @{
 $script:Discovery = @{
     HasDocs       = Test-Path ('{0}\{1}\*.md' -f $Folders.Docs, $PSCulture)
     HasTests      = Test-Path ('{0}\*.Tests.ps1' -f $Folders.Test)
+    IsUnix        = $PSVersionTable.PSEdition -eq "Core" -and -not $IsWindows
 }
 
 $tools = "$PSScriptRoot\tools"

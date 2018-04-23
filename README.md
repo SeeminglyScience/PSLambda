@@ -6,6 +6,12 @@ state and is not currently recommended for use in production environments.
 This project adheres to the Contributor Covenant [code of conduct](https://github.com/SeeminglyScience/PSLambda/tree/master/docs/CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable behavior to seeminglyscience@gmail.com.
 
+## Build status
+
+|AppVeyor (Windows)|CircleCI (Linux)|CodeCov|
+|---|---|---|
+|[![Build status](https://ci.appveyor.com/api/projects/status/8n8alv7moy661rr6?svg=true)](https://ci.appveyor.com/project/SeeminglyScience/pslambda) |[![CircleCI](https://circleci.com/gh/SeeminglyScience/PSLambda.svg?style=svg)](https://circleci.com/gh/SeeminglyScience/PSLambda)|[![codecov](https://codecov.io/gh/SeeminglyScience/PSLambda/branch/master/graph/badge.svg)](https://codecov.io/gh/SeeminglyScience/PSLambda)|
+
 ## Features
 
 - C# like syntax (due to being compiled from interpreted Linq expression trees) with some PowerShell
