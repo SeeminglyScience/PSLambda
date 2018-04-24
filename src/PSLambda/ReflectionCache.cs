@@ -61,7 +61,7 @@ namespace PSLambda
                     var parameters = method.GetParameters();
                     return parameters.Length == 2
                         && parameters[0].ParameterType == typeof(object)
-                        && parameters[1].ParameterType.IsGenericParameter;
+                        && parameters[1].ParameterType.IsByRef;
                 },
                 null)
                 .FirstOrDefault();

@@ -244,9 +244,9 @@ namespace PSLambda
                 case TokenKind.Or:
                     return OrElse(PSIsTrue(lhs), PSIsTrue(rhs));
                 case TokenKind.Band:
-                    return And(lhs, rhs);
+                    return PSBitwiseOperation(ExpressionType.And, lhs, rhs);
                 case TokenKind.Bor:
-                    return Or(lhs, rhs);
+                    return PSBitwiseOperation(ExpressionType.Or, lhs, rhs);
                 case TokenKind.Is:
                     if (rhsTypeConstant == null)
                     {
@@ -488,6 +488,14 @@ namespace PSLambda
 
         public object VisitHashtable(HashtableAst hashtableAst)
         {
+            if (hashtableAst.KeyValuePairs.Count == 0)
+            {
+                return New(
+                    ReflectionCache.Hashtable_Ctor,
+                    Constant(0),
+                    Property(null, ReflectionCache.StringComparer_CurrentCultureIgnoreCase));
+            }
+
             var elements = new ElementInit[hashtableAst.KeyValuePairs.Count];
             for (var i = 0; i < elements.Length; i++)
             {
@@ -536,8 +544,15 @@ namespace PSLambda
                     new[] { indexExpressionAst.Index.Compile(this) });
             }
 
-            if (TryFindGenericInterface(source.Type, typeof(IEnumerable<>), out Type genericEnumerable))
+            if (TryFindGenericInterface(source.Type, typeof(IEnumerable<>), out Type genericEnumerable) ||
+                (source.Type.IsGenericType &&
+                source.Type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
             {
+                if (genericEnumerable == null)
+                {
+                    genericEnumerable = source.Type;
+                }
+
                 Expression index;
                 try
                 {
@@ -787,6 +802,15 @@ namespace PSLambda
             {
                 using (_loops.NewScope())
                 {
+                    if (switchStatementAst.Clauses.Count == 0)
+                    {
+                        return new[]
+                        {
+                            switchStatementAst.Default.Compile(this),
+                            Label(_loops.Break)
+                        };
+                    }
+
                     var clauses = new SwitchCase[switchStatementAst.Clauses.Count];
                     for (var i = 0; i < clauses.Length; i++)
                     {
@@ -892,6 +916,8 @@ namespace PSLambda
                     return Assign(child, Increment(child));
                 case TokenKind.PostfixMinusMinus:
                     return Assign(child, Decrement(child));
+                case TokenKind.Not:
+                    return Not(PSIsTrue(child));
                 default:
                     ReportNotSupported(
                         unaryExpressionAst.Extent,
