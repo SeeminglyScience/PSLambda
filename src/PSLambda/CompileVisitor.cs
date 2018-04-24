@@ -802,6 +802,15 @@ namespace PSLambda
             {
                 using (_loops.NewScope())
                 {
+                    if (switchStatementAst.Clauses.Count == 0)
+                    {
+                        return new[]
+                        {
+                            switchStatementAst.Default.Compile(this),
+                            Label(_loops.Break)
+                        };
+                    }
+
                     var clauses = new SwitchCase[switchStatementAst.Clauses.Count];
                     for (var i = 0; i < clauses.Length; i++)
                     {
