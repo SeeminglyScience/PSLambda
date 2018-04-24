@@ -98,6 +98,20 @@ Describe 'operator tests' {
         (New-PSDelegate { 'That' -clike 'that' }).Invoke() | Should -Be $false
     }
 
+    It 'Inotlike' {
+        (New-PSDelegate { 'this' -notlike 't*s' }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'that' -notlike 't*s' }).Invoke() | Should -Be $true
+        (New-PSDelegate { 01243 -notlike '*4*' }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'That' -notlike 'that' }).Invoke() | Should -Be $false
+    }
+
+    It 'Cnotlike' {
+        (New-PSDelegate { 'this' -cnotlike 't*s' }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'that' -cnotlike 't*s' }).Invoke() | Should -Be $true
+        (New-PSDelegate { 01243 -cnotlike '*4*' }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'That' -cnotlike 'that' }).Invoke() | Should -Be $true
+    }
+
     It 'Imatch' {
         (New-PSDelegate { 'this' -match 'This' }).Invoke() | Should -Be $true
         (New-PSDelegate { 'this' -match 't[hi]{2}s' }).Invoke() | Should -Be $true
@@ -108,6 +122,18 @@ Describe 'operator tests' {
         (New-PSDelegate { 'this' -cmatch 'This' }).Invoke() | Should -Be $false
         (New-PSDelegate { 'this' -cmatch 't[hi]{2}s' }).Invoke() | Should -Be $true
         (New-PSDelegate { 'this' -cmatch '\w+' }).Invoke() | Should -Be $true
+    }
+
+    It 'Inotmatch' {
+        (New-PSDelegate { 'this' -notmatch 'This' }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'this' -notmatch 't[hi]{2}s' }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'this' -notmatch '\w+' }).Invoke() | Should -Be $false
+    }
+
+    It 'Cnotmatch' {
+        (New-PSDelegate { 'this' -cnotmatch 'This' }).Invoke() | Should -Be $true
+        (New-PSDelegate { 'this' -cnotmatch 't[hi]{2}s' }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'this' -cnotmatch '\w+' }).Invoke() | Should -Be $false
     }
 
     It 'Igt' {
@@ -187,6 +213,40 @@ Describe 'operator tests' {
         (New-PSDelegate { 'this' -ceq 'that' }).Invoke() | Should -Be $false
         (New-PSDelegate { 'this' -ceq 'This' }).Invoke() | Should -Be $false
     }
+
+    It 'Join' {
+        (New-PSDelegate { 0, 2, 4 -join '' }).Invoke() | Should -Be '024'
+        (New-PSDelegate { ([type], [string], [int]) -join '-'}).Invoke() | Should -Be 'type-string-int'
+    }
+
+    It 'Ireplace' {
+        (New-PSDelegate { 'Test string' -replace 't', 'w' }).Invoke() | Should -Be 'wesw swring'
+        (New-PSDelegate { 'Test string' -replace '^[A-Z]+', '-$0-' }).Invoke() | Should -Be '-Test- string'
+    }
+
+    It 'Creplace' {
+        (New-PSDelegate { 'Test string' -creplace 't', 'w' }).Invoke() | Should -Be 'Tesw swring'
+        (New-PSDelegate { 'Test string' -creplace '^[A-Z]+', '-$0-' }).Invoke() | Should -Be '-T-est string'
+    }
+
+    It 'And' {
+        (New-PSDelegate { 'string' -and $true }).Invoke() | Should -Be $true
+        (New-PSDelegate { 'string' -and $false }).Invoke() | Should -Be $false
+        (New-PSDelegate { $false -and $false }).Invoke() | Should -Be $false
+    }
+
+    It 'Or' {
+        (New-PSDelegate { 'string' -or $true }).Invoke() | Should -Be $true
+        (New-PSDelegate { 'string' -or $false }).Invoke() | Should -Be $true
+        (New-PSDelegate { $false -or $false }).Invoke() | Should -Be $false
+        (New-PSDelegate { $false -or $true }).Invoke() | Should -Be $true
+    }
+
+    It 'Not' {
+        (New-PSDelegate { -not $false }).Invoke() | Should -Be $true
+        (New-PSDelegate { -not $true }).Invoke() | Should -Be $false
+    }
+
     It 'Bor' {
         (New-PSDelegate { [Reflection.BindingFlags]::Instance -bor [Reflection.BindingFlags]::Public }).Invoke() |
             Should -Be ([Reflection.BindingFlags]'Instance, Public')
@@ -198,4 +258,41 @@ Describe 'operator tests' {
             Should -Be ([Reflection.BindingFlags]'Public')
     }
 
+    It 'As' {
+        (New-PSDelegate { 'string' -as [type] }).Invoke() | Should -Be ([string])
+        (New-PSDelegate { 'does_not_exist' -as [type] }).Invoke() | Should -Be $null
+        { New-PSDelegate { 'this' -as 'that' }} | Should -Throw '-as or -is expression with non-literal type.'
+    }
+
+    It 'Is' {
+        (New-PSDelegate { 'string' -is [string] }).Invoke() | Should -Be $true
+        (New-PSDelegate { 10 -is [int] }).Invoke() | Should -Be $true
+        (New-PSDelegate { 'string' -is [int] }).Invoke() | Should -Be $false
+    }
+
+    It 'Isnot' {
+        (New-PSDelegate { 'string' -isnot [string] }).Invoke() | Should -Be $false
+        (New-PSDelegate { 10 -isnot [int] }).Invoke() | Should -Be $false
+        (New-PSDelegate { 'string' -isnot [int] }).Invoke() | Should -Be $true
+    }
+
+    It 'Add' {
+        (New-PSDelegate { 2 + 1 }).Invoke() | Should -Be 3
+    }
+
+    It 'Subtract' {
+        (New-PSDelegate { 2 - 1 }).Invoke() | Should -Be 1
+    }
+
+    It 'Divide' {
+        (New-PSDelegate { 4 / 2 }).Invoke() | Should -Be 2
+    }
+
+    It 'Multiply' {
+        (New-PSDelegate { 4 * 2 }).Invoke() | Should -Be 8
+    }
+
+    It 'Rem' {
+        (New-PSDelegate { 4 % 3 }).Invoke() | Should -Be 1
+    }
 }

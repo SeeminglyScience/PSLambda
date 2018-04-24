@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -549,7 +549,7 @@ namespace PSLambda
                 source.Type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
             {
                 if (genericEnumerable == null)
-            {
+                {
                     genericEnumerable = source.Type;
                 }
 
