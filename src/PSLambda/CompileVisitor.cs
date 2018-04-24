@@ -244,9 +244,9 @@ namespace PSLambda
                 case TokenKind.Or:
                     return OrElse(PSIsTrue(lhs), PSIsTrue(rhs));
                 case TokenKind.Band:
-                    return And(lhs, rhs);
+                    return PSBitwiseOperation(ExpressionType.And, lhs, rhs);
                 case TokenKind.Bor:
-                    return Or(lhs, rhs);
+                    return PSBitwiseOperation(ExpressionType.Or, lhs, rhs);
                 case TokenKind.Is:
                     if (rhsTypeConstant == null)
                     {

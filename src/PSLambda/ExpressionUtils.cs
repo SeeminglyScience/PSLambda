@@ -352,6 +352,39 @@ namespace PSLambda
                 PSConvertTo<int>(rhs));
         }
 
+        /// <summary>
+        /// Creates an <see cref="Expression" /> representing the evaluation of a bitwise comparision
+        /// operator from the PowerShell engine.
+        /// </summary>
+        /// <param name="expressionType">The expression operator.</param>
+        /// <param name="lhs">The <see cref="Expression" /> on the left hand side.</param>
+        /// <param name="rhs">The <see cref="Expression" /> on the right hand side.</param>
+        /// <returns>An <see cref="Expression" /> representing the operation.</returns>
+        public static Expression PSBitwiseOperation(
+            ExpressionType expressionType,
+            Expression lhs,
+            Expression rhs)
+        {
+            var resultType = lhs.Type;
+            if (typeof(Enum).IsAssignableFrom(lhs.Type))
+            {
+                lhs = Convert(lhs, Enum.GetUnderlyingType(lhs.Type));
+            }
+
+            if (typeof(Enum).IsAssignableFrom(rhs.Type))
+            {
+                rhs = Convert(rhs, Enum.GetUnderlyingType(rhs.Type));
+            }
+
+            var resultExpression = MakeBinary(expressionType, lhs, rhs);
+            if (resultType == resultExpression.Type)
+            {
+                return resultExpression;
+            }
+
+            return PSConvertTo(resultExpression, resultType);
+        }
+
         private static bool PSEqualsIgnoreCase(object first, object second)
         {
             return LanguagePrimitives.Compare(first, second, ignoreCase: true) == 0;

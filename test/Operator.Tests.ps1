@@ -187,4 +187,15 @@ Describe 'operator tests' {
         (New-PSDelegate { 'this' -ceq 'that' }).Invoke() | Should -Be $false
         (New-PSDelegate { 'this' -ceq 'This' }).Invoke() | Should -Be $false
     }
+    It 'Bor' {
+        (New-PSDelegate { [Reflection.BindingFlags]::Instance -bor [Reflection.BindingFlags]::Public }).Invoke() |
+            Should -Be ([Reflection.BindingFlags]'Instance, Public')
+    }
+
+    It 'Band' {
+        $flags = [Reflection.BindingFlags]'Instance, Public'
+        (New-PSDelegate { $flags -band [Reflection.BindingFlags]::Public }).Invoke() |
+            Should -Be ([Reflection.BindingFlags]'Public')
+    }
+
 }
