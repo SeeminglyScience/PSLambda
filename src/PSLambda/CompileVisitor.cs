@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -488,6 +488,14 @@ namespace PSLambda
 
         public object VisitHashtable(HashtableAst hashtableAst)
         {
+            if (hashtableAst.KeyValuePairs.Count == 0)
+            {
+                return New(
+                    ReflectionCache.Hashtable_Ctor,
+                    Constant(0),
+                    Property(null, ReflectionCache.StringComparer_CurrentCultureIgnoreCase));
+            }
+
             var elements = new ElementInit[hashtableAst.KeyValuePairs.Count];
             for (var i = 0; i < elements.Length; i++)
             {

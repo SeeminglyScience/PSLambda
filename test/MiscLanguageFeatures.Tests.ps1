@@ -6,6 +6,9 @@ Import-Module $manifestPath -Force
 Describe 'Misc Language Features' {
     It 'Hashtable expression' {
         $delegate = New-PSDelegate {
+    Context 'hashtable tests' {
+        It 'handles varied types of values' {
+            $delegate = New-PSDelegate {
             return @{
                 'string' = 'value'
                 string2 = 10
@@ -18,6 +21,11 @@ Describe 'Misc Language Features' {
         $hashtable['string2'] | Should -Be 10
         $hashtable['Object'] | Should -BeOfType object
         $hashtable['object'] | Should -BeOfType object
+    }
+
+        It 'can initialize an empty hashtable' {
+            (New-PSDelegate { @{} }).Invoke().GetType() | Should -Be ([hashtable])
+        }
     }
 
     Context 'array literal' {
