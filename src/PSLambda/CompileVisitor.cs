@@ -916,6 +916,8 @@ namespace PSLambda
                     return Assign(child, Increment(child));
                 case TokenKind.PostfixMinusMinus:
                     return Assign(child, Decrement(child));
+                case TokenKind.Not:
+                    return Not(PSIsTrue(child));
                 default:
                     ReportNotSupported(
                         unaryExpressionAst.Extent,
