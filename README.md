@@ -85,6 +85,61 @@ There's two main ways to use the module.
 
 1. The `psdelegate` type accelerator - you can cast a `ScriptBlock` as this type and it will retain the context until converted. This object can then be converted to a specific `Delegate` type later, either by explicittly casting the object as that type or implicitly as a method argument. Local variables are retained from when the `psdelegate` object is created. This method requires that the module be imported into the session as the type will not exist until it is.
 
+### Demonstration of variable scoping and multi-threading
+
+```powershell
+using namespace System.Threading
+using namespace System.Threading.Tasks
+using namespace System.Collections.Concurrent
+
+# PowerShell variables
+$queue = [BlockingCollection[string]]::new()
+$shouldCancel = [CancellationTokenSource]::new()
+
+# Everything inside this is compiled.
+$delegate = [psdelegate]{
+    # The ThreadStart block doesn't require "psdelegate" because this is still within the
+    # expression tree, including the resulting nested delegate.  Scope is kept.
+    $thread = [Thread]::new([ThreadStart]{
+        try {
+            # Take from the blocking collection defined in PowerShell, and throw an
+            # OperationCancelledException if the cancellation token source defined in
+            # PowerShell has been cancelled.
+            while ($message = $queue.Take($shouldCancel.Token)) {
+                # All "AllScope" variables are available including $Host
+                $Host.UI.WriteLine($message)
+
+                # Implicit ScriptBlock to delegate conversion when it can determine the
+                # method argument type correctly
+                $task = [Task]::Run{
+                    [Thread]::Sleep(1000)
+                    # More Delegate nesting, still retaining variable scope.
+                    $Host.UI.WriteLine("Delayed: $message")
+                }
+
+                $task.GetAwaiter().GetResult()
+            }
+        # Make sure to catch anything that could throw inside the ThreadStart delegate, uncaught
+        # exceptions will crash PowerShell. Uncaught exceptions are fine outside of the ThreadStart
+        # delegate and will throw like any other method.
+        } catch [OperationCancelledException] {
+            $Host.UI.WriteLine('Thread closed!')
+        }
+    })
+
+    $thread.Start()
+    return $thread
+}
+
+$thread = $delegate.Invoke()
+$queue.Add('This is a test message!')
+$queue.Add('Another test!')
+$queue.Add('So many tests')
+
+# To close the thread use:
+# $shouldCancel.Cancel()
+```
+
 ### Create a psdelegate to pass to a method
 
 ```powershell
