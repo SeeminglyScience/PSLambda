@@ -544,8 +544,15 @@ namespace PSLambda
                     new[] { indexExpressionAst.Index.Compile(this) });
             }
 
-            if (TryFindGenericInterface(source.Type, typeof(IEnumerable<>), out Type genericEnumerable))
+            if (TryFindGenericInterface(source.Type, typeof(IEnumerable<>), out Type genericEnumerable) ||
+                (source.Type.IsGenericType &&
+                source.Type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
             {
+                if (genericEnumerable == null)
+            {
+                    genericEnumerable = source.Type;
+                }
+
                 Expression index;
                 try
                 {
