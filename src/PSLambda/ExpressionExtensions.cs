@@ -50,12 +50,12 @@ namespace PSLambda
             }
             catch (ArgumentException e)
             {
-                visitor.ReportParseError(ast.Extent, e);
+                visitor.Errors.ReportParseError(ast.Extent, e);
                 return Expression.Empty();
             }
             catch (InvalidOperationException e)
             {
-                visitor.ReportParseError(ast.Extent, e);
+                visitor.Errors.ReportParseError(ast.Extent, e);
                 return Expression.Empty();
             }
         }

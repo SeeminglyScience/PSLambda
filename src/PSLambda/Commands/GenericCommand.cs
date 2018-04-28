@@ -76,7 +76,7 @@ namespace PSLambda.Commands
 
         private Expression ReportInvalidSyntax(IScriptExtent extent, CompileVisitor visitor)
         {
-            visitor.ReportParseError(
+            visitor.Errors.ReportParseError(
                 extent,
                 nameof(ErrorStrings.InvalidGenericSyntax),
                 ErrorStrings.InvalidGenericSyntax);
