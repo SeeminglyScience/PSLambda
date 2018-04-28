@@ -90,5 +90,13 @@ Describe 'Method resolution tests' {
             "named 'Compare' that takes the specified arguments."
 
         { New-PSDelegate { [string]::Compare() }} | Should -Throw $expectedMsg
+
+        $expectedMsg =
+            "'System.Management.Automation.Host.PSHostUserInterface' does not " +
+            "contain a definition for a method named 'WriteLine' that takes the " +
+            "specified arguments."
+
+        { New-PSDelegate { [Collections.Generic.List[int]]::new(0..10).ConvertAll('invalid') } } |
+            Should -Throw $expectedMsg
     }
 }
