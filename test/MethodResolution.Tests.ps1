@@ -96,7 +96,6 @@ Describe 'Method resolution tests' {
             "contain a definition for a method named 'WriteLine' that takes the " +
             "specified arguments."
 
-        { New-PSDelegate { [Collections.Generic.List[int]]::new(0..10).ConvertAll('invalid') } } |
-            Should -Throw $expectedMsg
+        { New-PSDelegate { $Host.UI.WriteLine(10) }} | Should -Throw $expectedMsg
     }
 }
