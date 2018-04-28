@@ -25,7 +25,7 @@ namespace PSLambda.Commands
         {
             if (commandAst.CommandElements.Count != 3)
             {
-                visitor.ReportParseError(
+                visitor.Errors.ReportParseError(
                     commandAst.Extent,
                     nameof(ErrorStrings.MissingWithElements),
                     ErrorStrings.MissingWithElements);
@@ -35,7 +35,7 @@ namespace PSLambda.Commands
             var bodyAst = commandAst.CommandElements[2] as ScriptBlockExpressionAst;
             if (bodyAst == null)
             {
-                visitor.ReportParseError(
+                visitor.Errors.ReportParseError(
                     commandAst.Extent,
                     nameof(ErrorStrings.MissingWithBody),
                     ErrorStrings.MissingWithBody);

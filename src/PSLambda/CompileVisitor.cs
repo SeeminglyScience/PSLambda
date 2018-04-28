@@ -20,6 +20,11 @@ namespace PSLambda
     /// </summary>
     internal class CompileVisitor : ICustomAstVisitor, ICustomAstVisitor2
     {
+        private static readonly HashSet<string> s_defaultNamespaces = new HashSet<string>()
+        {
+            "System.Linq"
+        };
+
         private static readonly CommandService s_commands = new CommandService();
 
         private static readonly Dictionary<PSVariable, Expression> s_wrapperCache = new Dictionary<PSVariable, Expression>();
@@ -38,7 +43,7 @@ namespace PSLambda
 
         private readonly VariableScopeStack _scopeStack = new VariableScopeStack();
 
-        private readonly List<ParseError> _parseErrors = new List<ParseError>();
+        private MemberBinder _binder;
 
         private Dictionary<string, PSVariable> _locals = new Dictionary<string, PSVariable>();
 
@@ -47,7 +52,13 @@ namespace PSLambda
         private CompileVisitor(EngineIntrinsics engine)
         {
             _engine = Constant(engine, typeof(EngineIntrinsics));
+            Errors = ParseErrorWriter.CreateDefault();
         }
+
+        /// <summary>
+        /// Gets or sets the <see cref="Errors" /> we should report errors to.
+        /// </summary>
+        internal IParseErrorWriter Errors { get; set; }
 
         #pragma warning disable SA1600
         public object VisitArrayExpression(ArrayExpressionAst arrayExpressionAst)
@@ -156,7 +167,7 @@ namespace PSLambda
             }
             catch (ArgumentException e)
             {
-                ReportParseError(assignmentStatementAst.Extent, e);
+                Errors.ReportParseError(assignmentStatementAst.Extent, e);
                 return Empty();
             }
         }
@@ -250,7 +261,7 @@ namespace PSLambda
                 case TokenKind.Is:
                     if (rhsTypeConstant == null)
                     {
-                        ReportNonConstantTypeAs(binaryExpressionAst.Right.Extent);
+                        Errors.ReportNonConstantTypeAs(binaryExpressionAst.Right.Extent);
                         return Empty();
                     }
 
@@ -258,7 +269,7 @@ namespace PSLambda
                 case TokenKind.IsNot:
                     if (rhsTypeConstant == null)
                     {
-                        ReportNonConstantTypeAs(binaryExpressionAst.Right.Extent);
+                        Errors.ReportNonConstantTypeAs(binaryExpressionAst.Right.Extent);
                         return Empty();
                     }
 
@@ -266,7 +277,7 @@ namespace PSLambda
                 case TokenKind.As:
                     if (rhsTypeConstant == null)
                     {
-                        ReportNonConstantTypeAs(binaryExpressionAst.Right.Extent);
+                        Errors.ReportNonConstantTypeAs(binaryExpressionAst.Right.Extent);
                         return Empty();
                     }
 
@@ -282,7 +293,7 @@ namespace PSLambda
                 case TokenKind.Rem:
                     return MakeBinary(ExpressionType.Modulo, lhs, rhs);
                 default:
-                    ReportNotSupported(
+                    Errors.ReportNotSupported(
                         binaryExpressionAst.ErrorPosition,
                         binaryExpressionAst.Operator.ToString(),
                         binaryExpressionAst.Operator.ToString());
@@ -453,7 +464,7 @@ namespace PSLambda
                     }
                     catch (ArgumentException e)
                     {
-                        ReportParseError(forEachStatementAst.Extent, e);
+                        Errors.ReportParseError(forEachStatementAst.Extent, e);
                         return Empty();
                     }
                 }
@@ -560,7 +571,7 @@ namespace PSLambda
                 }
                 catch (InvalidOperationException e)
                 {
-                    ReportParseError(indexExpressionAst.Index.Extent, e);
+                    Errors.ReportParseError(indexExpressionAst.Index.Extent, e);
                     return Empty();
                 }
 
@@ -588,7 +599,7 @@ namespace PSLambda
                     new[] { indexExpressionAst.Index.Compile(this) });
             }
 
-            ReportParseError(
+            Errors.ReportParseError(
                 indexExpressionAst.Extent,
                 nameof(ErrorStrings.UnknownIndexer),
                 string.Format(
@@ -630,7 +641,7 @@ namespace PSLambda
 
                 if (resolvedMember == null)
                 {
-                    ReportParseError(
+                    Errors.ReportParseError(
                         memberExpressionAst.Extent,
                         nameof(ErrorStrings.MissingMember),
                         string.Format(
@@ -657,7 +668,7 @@ namespace PSLambda
             }
             catch (ArgumentException e)
             {
-                ReportParseError(memberExpressionAst.Extent, e, nameof(ErrorStrings.MissingMember));
+                Errors.ReportParseError(memberExpressionAst.Extent, e, nameof(ErrorStrings.MissingMember));
                 return Empty();
             }
         }
@@ -698,7 +709,7 @@ namespace PSLambda
         {
             if (pipelineAst.PipelineElements.Count > 1)
             {
-                ReportNotSupported(
+                Errors.ReportNotSupported(
                     pipelineAst.Extent,
                     nameof(ErrorStrings.Pipeline),
                     ErrorStrings.Pipeline);
@@ -723,7 +734,7 @@ namespace PSLambda
                 }
                 catch (ArgumentException e)
                 {
-                    ReportParseError(returnStatementAst.Extent, e);
+                    Errors.ReportParseError(returnStatementAst.Extent, e);
                     return Empty();
                 }
             }
@@ -737,7 +748,7 @@ namespace PSLambda
             }
             catch (ArgumentException e)
             {
-                ReportParseError(returnStatementAst.Extent, e);
+                Errors.ReportParseError(returnStatementAst.Extent, e);
                 return Empty();
             }
         }
@@ -780,7 +791,7 @@ namespace PSLambda
                 }
                 catch (ArgumentException e)
                 {
-                    ReportParseError(statementBlockAst.Extent, e);
+                    Errors.ReportParseError(statementBlockAst.Extent, e);
                     return Empty();
                 }
             }
@@ -919,7 +930,7 @@ namespace PSLambda
                 case TokenKind.Not:
                     return Not(PSIsTrue(child));
                 default:
-                    ReportNotSupported(
+                    Errors.ReportNotSupported(
                         unaryExpressionAst.Extent,
                         unaryExpressionAst.TokenKind.ToString(),
                         unaryExpressionAst.TokenKind.ToString());
@@ -967,7 +978,7 @@ namespace PSLambda
                         (variableExpressionAst.Parent is ConvertExpressionAst &&
                         variableExpressionAst.Parent.Parent is AssignmentStatementAst)))
                     {
-                        ReportParseError(
+                        Errors.ReportParseError(
                             variableExpressionAst.Extent,
                             nameof(ErrorStrings.InvalidVariableReference),
                             string.Format(
@@ -994,7 +1005,7 @@ namespace PSLambda
                 return expression;
             }
 
-            ReportNotSupportedAstType(commandAst);
+            Errors.ReportNotSupportedAstType(commandAst);
             return Empty();
         }
 
@@ -1026,121 +1037,121 @@ namespace PSLambda
 
         public object VisitTypeDefinition(TypeDefinitionAst typeDefinitionAst)
         {
-            ReportNotSupportedAstType(typeDefinitionAst);
+            Errors.ReportNotSupportedAstType(typeDefinitionAst);
             return Empty();
         }
 
         public object VisitPropertyMember(PropertyMemberAst propertyMemberAst)
         {
-            ReportNotSupportedAstType(propertyMemberAst);
+            Errors.ReportNotSupportedAstType(propertyMemberAst);
             return Empty();
         }
 
         public object VisitFunctionMember(FunctionMemberAst functionMemberAst)
         {
-            ReportNotSupportedAstType(functionMemberAst);
+            Errors.ReportNotSupportedAstType(functionMemberAst);
             return Empty();
         }
 
         public object VisitBaseCtorInvokeMemberExpression(BaseCtorInvokeMemberExpressionAst baseCtorInvokeMemberExpressionAst)
         {
-            ReportNotSupportedAstType(baseCtorInvokeMemberExpressionAst);
+            Errors.ReportNotSupportedAstType(baseCtorInvokeMemberExpressionAst);
             return Empty();
         }
 
         public object VisitUsingStatement(UsingStatementAst usingStatement)
         {
-            ReportNotSupportedAstType(usingStatement);
+            Errors.ReportNotSupportedAstType(usingStatement);
             return Empty();
         }
 
         public object VisitConfigurationDefinition(ConfigurationDefinitionAst configurationDefinitionAst)
         {
-            ReportNotSupportedAstType(configurationDefinitionAst);
+            Errors.ReportNotSupportedAstType(configurationDefinitionAst);
             return Empty();
         }
 
         public object VisitDynamicKeywordStatement(DynamicKeywordStatementAst dynamicKeywordAst)
         {
-            ReportNotSupportedAstType(dynamicKeywordAst);
+            Errors.ReportNotSupportedAstType(dynamicKeywordAst);
             return Empty();
         }
 
         public object VisitCommandParameter(CommandParameterAst commandParameterAst)
         {
-            ReportNotSupportedAstType(commandParameterAst);
+            Errors.ReportNotSupportedAstType(commandParameterAst);
             return Empty();
         }
 
         public object VisitDataStatement(DataStatementAst dataStatementAst)
         {
-            ReportNotSupportedAstType(dataStatementAst);
+            Errors.ReportNotSupportedAstType(dataStatementAst);
             return Empty();
         }
 
         public object VisitErrorExpression(ErrorExpressionAst errorExpressionAst)
         {
-            ReportNotSupportedAstType(errorExpressionAst);
+            Errors.ReportNotSupportedAstType(errorExpressionAst);
             return Empty();
         }
 
         public object VisitErrorStatement(ErrorStatementAst errorStatementAst)
         {
-            ReportNotSupportedAstType(errorStatementAst);
+            Errors.ReportNotSupportedAstType(errorStatementAst);
             return Empty();
         }
 
         public object VisitFileRedirection(FileRedirectionAst fileRedirectionAst)
         {
-            ReportNotSupportedAstType(fileRedirectionAst);
+            Errors.ReportNotSupportedAstType(fileRedirectionAst);
             return Empty();
         }
 
         public object VisitFunctionDefinition(FunctionDefinitionAst functionDefinitionAst)
         {
-            ReportNotSupportedAstType(functionDefinitionAst);
+            Errors.ReportNotSupportedAstType(functionDefinitionAst);
             return Empty();
         }
 
         public object VisitMergingRedirection(MergingRedirectionAst mergingRedirectionAst)
         {
-            ReportNotSupportedAstType(mergingRedirectionAst);
+            Errors.ReportNotSupportedAstType(mergingRedirectionAst);
             return Empty();
         }
 
         public object VisitNamedAttributeArgument(NamedAttributeArgumentAst namedAttributeArgumentAst)
         {
-            ReportNotSupportedAstType(namedAttributeArgumentAst);
+            Errors.ReportNotSupportedAstType(namedAttributeArgumentAst);
             return Empty();
         }
 
         public object VisitTrap(TrapStatementAst trapStatementAst)
         {
-            ReportNotSupportedAstType(trapStatementAst);
+            Errors.ReportNotSupportedAstType(trapStatementAst);
             return Empty();
         }
 
         public object VisitTypeConstraint(TypeConstraintAst typeConstraintAst)
         {
-            ReportNotSupportedAstType(typeConstraintAst);
+            Errors.ReportNotSupportedAstType(typeConstraintAst);
             return Empty();
         }
 
         public object VisitUsingExpression(UsingExpressionAst usingExpressionAst)
         {
-            ReportNotSupportedAstType(usingExpressionAst);
+            Errors.ReportNotSupportedAstType(usingExpressionAst);
             return Empty();
         }
 
         public object VisitAttribute(AttributeAst attributeAst)
         {
-            ReportNotSupportedAstType(attributeAst);
+            Errors.ReportNotSupportedAstType(attributeAst);
             return Empty();
         }
 
         public object VisitAttributedExpression(AttributedExpressionAst attributedExpressionAst)
         {
-            ReportNotSupportedAstType(attributedExpressionAst);
+            Errors.ReportNotSupportedAstType(attributedExpressionAst);
             return Empty();
         }
         #pragma warning restore SA1600
@@ -1207,6 +1218,21 @@ namespace PSLambda
             InvokeMemberExpressionAst invokeMemberExpressionAst,
             Type[] genericArguments)
         {
+            Ast[] arguments;
+            if (genericArguments.Length < 1 &&
+                TryGetGenericArgumentDeclaration(invokeMemberExpressionAst, ref genericArguments))
+            {
+                arguments = new Ast[invokeMemberExpressionAst.Arguments.Count - 1];
+                for (var i = 0; i < arguments.Length; i++)
+                {
+                    arguments[i] = invokeMemberExpressionAst.Arguments[i + 1];
+                }
+            }
+            else
+            {
+                arguments = invokeMemberExpressionAst?.Arguments?.ToArray() ?? new Ast[0];
+            }
+
             string memberName;
             if (!TryResolveConstant<string>(invokeMemberExpressionAst.Member, out memberName))
             {
@@ -1223,36 +1249,63 @@ namespace PSLambda
 
                 if (memberName.Equals(Strings.ConstructorMemberName, StringComparison.Ordinal))
                 {
-                    var expressions = invokeMemberExpressionAst.Arguments.CompileAll(this);
+                    var expressions = arguments.CompileAll(this);
                     return New(GetBestConstructor(resolvedType, expressions), expressions);
                 }
 
                 try
                 {
-                    return Call(
-                        resolvedType,
-                        memberName,
-                        genericArguments,
-                        invokeMemberExpressionAst.Arguments.CompileAll(this));
+                    var result = GetBinder(invokeMemberExpressionAst)
+                        .BindMethod(
+                            this,
+                            resolvedType,
+                            memberName,
+                            arguments,
+                            genericArguments);
+
+                    if (result.Expression != null)
+                    {
+                        return result.Expression;
+                    }
+
+                    Errors.ReportParseError(
+                        invokeMemberExpressionAst.Member.Extent,
+                        result.Reason,
+                        result.Id);
+                    return Empty();
                 }
                 catch (InvalidOperationException e)
                 {
-                    ReportParseError(invokeMemberExpressionAst.Extent, e, nameof(ErrorStrings.MissingMember));
+                    Errors.ReportParseError(invokeMemberExpressionAst.Extent, e, nameof(ErrorStrings.MissingMember));
                     return Empty();
                 }
             }
 
             try
             {
-                return Call(
-                    invokeMemberExpressionAst.Expression.Compile(this),
-                    memberName,
-                    genericArguments,
-                    invokeMemberExpressionAst.Arguments.CompileAll(this));
+                var instance = invokeMemberExpressionAst.Expression.Compile(this);
+                var result = GetBinder(invokeMemberExpressionAst)
+                    .BindMethod(
+                        this,
+                        instance,
+                        memberName,
+                        arguments,
+                        genericArguments);
+
+                if (result.Expression != null)
+                {
+                    return result.Expression;
+                }
+
+                Errors.ReportParseError(
+                    invokeMemberExpressionAst.Member.Extent,
+                    result.Reason,
+                    result.Id);
+                return Empty();
             }
             catch (InvalidOperationException e)
             {
-                ReportParseError(invokeMemberExpressionAst.Extent, e, nameof(ErrorStrings.MissingMember));
+                Errors.ReportParseError(invokeMemberExpressionAst.Extent, e, nameof(ErrorStrings.MissingMember));
                 return Empty();
             }
         }
@@ -1305,112 +1358,12 @@ namespace PSLambda
                     expressions = new[] { expressionFactory() };
                 }
 
+                if (blockReturnType == null)
+                {
+                    return Block(_scopeStack.GetVariables(), expressions);
+                }
+
                 return Block(blockReturnType, _scopeStack.GetVariables(), expressions);
-            }
-        }
-
-        /// <summary>
-        /// Generate a <see cref="ParseError" /> citing an unsupported <see cref="Ast" /> type.
-        /// </summary>
-        /// <param name="ast">The <see cref="Ast" /> that is not supported.</param>
-        internal void ReportNotSupportedAstType(Ast ast)
-        {
-            ReportNotSupported(
-                ast.Extent,
-                ast.GetType().Name,
-                string.Format(
-                    CultureInfo.CurrentCulture,
-                    ErrorStrings.AstNotSupported,
-                    ast.GetType().Name));
-        }
-
-        /// <summary>
-        /// Generate a <see cref="ParseError" /> citing an unsupported element.
-        /// </summary>
-        /// <param name="extent">The <see cref="IScriptExtent" /> of the unsupported element.</param>
-        /// <param name="id">The ID to be shown in the <see cref="ParseError" />.</param>
-        /// <param name="message">The message to be shown in the <see cref="ParseError" />.</param>
-        internal void ReportNotSupported(
-            IScriptExtent extent,
-            string id,
-            string message)
-        {
-            ReportParseError(
-                extent,
-                nameof(ErrorStrings.ElementNotSupported),
-                string.Format(
-                    CultureInfo.CurrentCulture,
-                    ErrorStrings.ElementNotSupported,
-                    message));
-        }
-
-        /// <summary>
-        /// Generate a <see cref="ParseError" /> citing a missing element.
-        /// </summary>
-        /// <param name="extent">The <see cref="IScriptExtent" /> of the missing element.</param>
-        /// <param name="id">The ID to be shown in the <see cref="ParseError" />.</param>
-        /// <param name="message">The message to be shown in the <see cref="ParseError" />.</param>
-        internal void ReportMissing(IScriptExtent extent, string id, string message)
-        {
-            ReportParseError(
-                extent,
-                nameof(ErrorStrings.ElementMissing),
-                string.Format(
-                    CultureInfo.CurrentCulture,
-                    ErrorStrings.ElementMissing,
-                    message));
-        }
-
-        /// <summary>
-        /// Generate a <see cref="ParseError" />.
-        /// </summary>
-        /// <param name="extent">The <see cref="IScriptExtent" /> of element in error.</param>
-        /// <param name="id">The ID to be shown in the <see cref="ParseError" />.</param>
-        /// <param name="message">The message to be shown in the <see cref="ParseError" />.</param>
-        internal void ReportParseError(
-            IScriptExtent extent,
-            string id = nameof(ErrorStrings.CompileTimeParseError),
-            string message = "")
-        {
-            if (string.IsNullOrWhiteSpace(message))
-            {
-                message = ErrorStrings.CompileTimeParseError;
-            }
-
-            _parseErrors.Add(new ParseError(extent, id, message));
-            if (_parseErrors.Count > 2)
-            {
-                throw new ParseException(_parseErrors.ToArray());
-            }
-        }
-
-        /// <summary>
-        /// Generate a <see cref="ParseError" />.
-        /// </summary>
-        /// <param name="extent">The <see cref="IScriptExtent" /> of element in error.</param>
-        /// <param name="exception">
-        /// The exception housing the message to be shown in the <see cref="ParseError" />.
-        /// </param>
-        /// <param name="id">The ID to be shown in the <see cref="ParseError" />.</param>
-        internal void ReportParseError(
-            IScriptExtent extent,
-            Exception exception,
-            string id = "")
-        {
-            if (string.IsNullOrEmpty(id))
-            {
-                id = exception.GetType().Name;
-            }
-
-            _parseErrors.Add(
-                new ParseError(
-                    extent,
-                    id,
-                    exception.Message));
-
-            if (_parseErrors.Count > 2)
-            {
-                throw new ParseException(_parseErrors.ToArray());
             }
         }
 
@@ -1428,7 +1381,7 @@ namespace PSLambda
             if (ast == null)
             {
                 resolvedType = null;
-                ReportParseError(
+                Errors.ReportParseError(
                     ast.Extent,
                     nameof(ErrorStrings.MissingType),
                     ErrorStrings.MissingType);
@@ -1446,11 +1399,114 @@ namespace PSLambda
             }
 
             resolvedType = null;
-            ReportParseError(
+            Errors.ReportParseError(
                 ast.Extent,
                 nameof(ErrorStrings.MissingType),
                 ErrorStrings.MissingType);
             return false;
+        }
+
+        /// <summary>
+        /// Compiles a <see cref="Ast" /> into a <see cref="LambdaExpression" />.
+        /// </summary>
+        /// <param name="scriptBlockAst">The <see cref="ScriptBlockAst" /> to compile.</param>
+        /// <param name="localVariables">
+        /// Any <see cref="PSVariable" /> objects that should be accessible from the delegate and
+        /// are not AllScope or Constant.
+        /// </param>
+        /// <param name="delegateType">
+        /// The type inheriting from <see cref="Delegate" /> that the
+        /// <see cref="LambdaExpression" /> is expected to be.
+        /// </param>
+        /// <returns>The interpreted <see cref="LambdaExpression" />.</returns>
+        internal LambdaExpression CompileAstImpl(
+            ScriptBlockAst scriptBlockAst,
+            PSVariable[] localVariables,
+            Type delegateType)
+        {
+            if (delegateType != null)
+            {
+                var delegateMethod = delegateType.GetMethod("Invoke");
+                var parameters = delegateMethod.GetParameters();
+                var parameterTypes = new Type[parameters.Length];
+                for (var i = 0; i < parameterTypes.Length; i++)
+                {
+                    parameterTypes[i] = parameters[i].ParameterType;
+                }
+
+                return CompileAstImpl(
+                    scriptBlockAst,
+                    localVariables,
+                    parameterTypes,
+                    delegateMethod.ReturnType,
+                    delegateType);
+            }
+
+            return CompileAstImpl(
+                scriptBlockAst,
+                localVariables,
+                null,
+                null,
+                null);
+        }
+
+        /// <summary>
+        /// Compiles a <see cref="Ast" /> into a <see cref="LambdaExpression" />.
+        /// </summary>
+        /// <param name="scriptBlockAst">The <see cref="ScriptBlockAst" /> to compile.</param>
+        /// <param name="localVariables">
+        /// Any <see cref="PSVariable" /> objects that should be accessible from the delegate and
+        /// are not AllScope or Constant.
+        /// </param>
+        /// <param name="expectedParameterTypes">The parameter types to expect.</param>
+        /// <param name="expectedReturnType">The return type to expect.</param>
+        /// <param name="delegateType">
+        /// The type inheriting from <see cref="Delegate" /> that the
+        /// <see cref="LambdaExpression" /> is expected to be.
+        /// </param>
+        /// <returns>The interpreted <see cref="LambdaExpression" />.</returns>
+        internal LambdaExpression CompileAstImpl(
+            ScriptBlockAst scriptBlockAst,
+            PSVariable[] localVariables,
+            Type[] expectedParameterTypes,
+            Type expectedReturnType,
+            Type delegateType)
+        {
+            foreach (var local in localVariables)
+            {
+                _locals.Add(local.Name, local);
+            }
+
+            scriptBlockAst = ConvertToDelegateAst(scriptBlockAst);
+            var lambda = CreateLambda(
+                scriptBlockAst,
+                () =>
+                {
+                    using (_scopeStack.NewScope())
+                    {
+                        var returnsHandle = expectedReturnType == null
+                            ? _returns.NewScope()
+                            : _returns.NewScope(expectedReturnType);
+                        using (returnsHandle)
+                        {
+                            var requireExplicitReturn =
+                                scriptBlockAst.EndBlock.Statements.Count != 1 ||
+                                    !(scriptBlockAst.EndBlock.Statements[0] is CommandBaseAst ||
+                                    scriptBlockAst.EndBlock.Statements[0] is PipelineAst);
+
+                            var body = scriptBlockAst.EndBlock.Compile(this);
+                            return Block(
+                                _scopeStack.GetVariables(),
+                                _returns.WithReturn(new[] { body }, requireExplicitReturn));
+                        }
+                    }
+                },
+                expectedParameterTypes,
+                expectedReturnType,
+                delegateType);
+
+            Errors.ThrowIfAnyErrors();
+            return lambda;
         }
 
         private static bool FilterGenericInterfaceDefinition(Type m, object filterCriteria)
@@ -1458,48 +1514,66 @@ namespace PSLambda
             return m.IsGenericType && m.GetGenericTypeDefinition() == (Type)filterCriteria;
         }
 
-        private LambdaExpression CompileAstImpl(
-            ScriptBlockAst sbAst,
-            PSVariable[] localVariables,
-            Type delegateType = null)
+        private ScriptBlockAst ConvertToDelegateAst(ScriptBlockAst scriptBlockAst)
         {
-            foreach (var local in localVariables)
+            return (ScriptBlockAst)scriptBlockAst.Visit(
+                new DelegateSyntaxVisitor(Errors));
+        }
+
+        private bool TryGetGenericArgumentDeclaration(InvokeMemberExpressionAst ast, ref Type[] arguments)
+        {
+            if (ast.Arguments == null || ast.Arguments.Count == 0)
             {
-                _locals.Add(local.Name, local);
+                return false;
             }
 
-            sbAst = ConvertToDelegateAst(sbAst);
-            var lambda = CreateLambda(
-                sbAst,
-                () =>
+            var typeExpression = ast.Arguments[0] as TypeExpressionAst;
+
+            if (typeExpression == null)
+            {
+                return false;
+            }
+
+            var genericTypeName = typeExpression.TypeName as GenericTypeName;
+            if (genericTypeName == null)
+            {
+                return false;
+            }
+
+            if (!genericTypeName.TypeName.Name.Equals("g", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            arguments = new Type[genericTypeName.GenericArguments.Count];
+            for (var i = 0; i < arguments.Length; i++)
+            {
+                arguments[i] = genericTypeName.GenericArguments[i].GetReflectionType();
+                if (arguments[i] == null)
                 {
-                    using (_scopeStack.NewScope())
-                    {
-                        var returnsHandle = delegateType == null
-                            ? _returns.NewScope()
-                            : _returns.NewScope(delegateType);
-                        using (returnsHandle)
-                        {
-                            var requireExplicitReturn =
-                                sbAst.EndBlock.Statements.Count != 1 ||
-                                    !(sbAst.EndBlock.Statements[0] is CommandBaseAst ||
-                                    sbAst.EndBlock.Statements[0] is PipelineAst);
-
-                            var body = sbAst.EndBlock.Compile(this);
-                            return Block(
-                                _scopeStack.GetVariables(),
-                                _returns.WithReturn(new[] { body }, requireExplicitReturn));
-                        }
-                    }
-                },
-                delegateType);
-
-            if (_parseErrors.Count != 0)
-            {
-                throw new ParseException(_parseErrors.ToArray());
+                    Errors.ReportParseError(
+                        genericTypeName.GenericArguments[i].Extent,
+                        nameof(ErrorStrings.TypeNotFound),
+                        string.Format(
+                            CultureInfo.CurrentCulture,
+                            ErrorStrings.TypeNotFound,
+                            genericTypeName.GenericArguments[i].FullName));
+                    Errors.ThrowIfAnyErrors();
+                    return false;
+                }
             }
 
-            return lambda;
+            return true;
+        }
+
+        private LambdaExpression CompileAstImpl(
+            ScriptBlockAst scriptBlockAst,
+            PSVariable[] localVariables)
+        {
+            return CompileAstImpl(
+                scriptBlockAst,
+                localVariables,
+                null);
         }
 
         private Expression MakeAssignment(
@@ -1528,11 +1602,11 @@ namespace PSLambda
             }
             catch (InvalidOperationException e)
             {
-                ReportParseError(operationExtent, e);
+                Errors.ReportParseError(operationExtent, e);
                 return Empty();
             }
 
-            ReportNotSupported(
+            Errors.ReportNotSupported(
                 operationExtent,
                 Strings.OperatorNotSupportedId,
                 operatorKind.ToString());
@@ -1557,115 +1631,14 @@ namespace PSLambda
                 HandleRemainingClauses(ifStmtAst, clauseIndex + 1));
         }
 
-        private ScriptBlockAst ConvertToDelegateAst(ScriptBlockAst scriptBlockAst)
+        private LambdaExpression CreateLambda(
+            ScriptBlockAst scriptBlockAst,
+            Func<Expression> blockFactory,
+            Type[] expectedParameterTypes,
+            Type expectedReturnType,
+            Type delegateType)
         {
-            if (scriptBlockAst.BeginBlock != null)
-            {
-                ReportNotSupported(
-                    scriptBlockAst.BeginBlock.Extent,
-                    nameof(CompilerStrings.BeginBlock),
-                    CompilerStrings.BeginBlock);
-            }
-
-            if (scriptBlockAst.ProcessBlock != null)
-            {
-                ReportNotSupported(
-                    scriptBlockAst.ProcessBlock.Extent,
-                    nameof(CompilerStrings.ProcessBlock),
-                    CompilerStrings.ProcessBlock);
-            }
-
-            if (scriptBlockAst.EndBlock == null ||
-                scriptBlockAst.EndBlock.Statements == null ||
-                scriptBlockAst.EndBlock.Statements.Count == 0)
-            {
-                ReportMissing(scriptBlockAst.Extent, nameof(CompilerStrings.EndBlock), CompilerStrings.EndBlock);
-                throw new ParseException(_parseErrors.ToArray());
-            }
-
-            if (scriptBlockAst.EndBlock.Statements.Count == 1 &&
-                scriptBlockAst.EndBlock.Statements[0] is AssignmentStatementAst assignment &&
-                assignment.Right is PipelineAst pipeline &&
-                pipeline.PipelineElements.Count == 1 &&
-                pipeline.PipelineElements[0] is CommandAst command &&
-                command.CommandElements.Count == 2 &&
-                !string.IsNullOrEmpty(command.GetCommandName()) &&
-                command.GetCommandName().Equals(Strings.DelegateSyntaxCommandName, StringComparison.Ordinal) &&
-                command.CommandElements[1] is ScriptBlockExpressionAst body)
-            {
-                var paramBlock = new ParamBlockAst(
-                    assignment.Left.Extent,
-                    Enumerable.Empty<AttributeAst>(),
-                    GetParametersFromDelegateExpression(assignment.Left));
-
-                return new ScriptBlockAst(
-                    scriptBlockAst.Extent,
-                    paramBlock,
-                    null,
-                    null,
-                    (NamedBlockAst)body.ScriptBlock.EndBlock.Copy(),
-                    null);
-            }
-
-            return scriptBlockAst;
-        }
-
-        private IEnumerable<ParameterAst> GetParametersFromDelegateExpression(ExpressionAst expressionAst)
-        {
-            var parenExpression = expressionAst as ParenExpressionAst;
-            if (parenExpression == null)
-            {
-                return Enumerable.Empty<ParameterAst>();
-            }
-
-            var pipelineAst = parenExpression.Pipeline as PipelineAst;
-            if (pipelineAst == null)
-            {
-                return Enumerable.Empty<ParameterAst>();
-            }
-
-            if (pipelineAst.PipelineElements.Count != 1)
-            {
-                return Enumerable.Empty<ParameterAst>();
-            }
-
-            var commandExpression = pipelineAst.PipelineElements[0] as CommandExpressionAst;
-            if (commandExpression == null)
-            {
-                return Enumerable.Empty<ParameterAst>();
-            }
-
-            var arrayLiteral = commandExpression.Expression as ArrayLiteralAst;
-            if (arrayLiteral != null)
-            {
-                return arrayLiteral.Elements.Select(GetParameterFromExpression);
-            }
-
-            return new[] { GetParameterFromExpression(commandExpression.Expression) };
-        }
-
-        private ParameterAst GetParameterFromExpression(ExpressionAst expressionAst)
-        {
-            var convertExpression = expressionAst as ConvertExpressionAst;
-            if (convertExpression != null)
-            {
-                return new ParameterAst(
-                    convertExpression.Child.Extent,
-                    (VariableExpressionAst)convertExpression.Child.Copy(),
-                    new[] { new TypeConstraintAst(convertExpression.Attribute.Extent, convertExpression.Attribute.TypeName) },
-                    null);
-            }
-
-            return new ParameterAst(
-                expressionAst.Extent,
-                (VariableExpressionAst)expressionAst.Copy(),
-                Enumerable.Empty<AttributeAst>(),
-                null);
-        }
-
-        private LambdaExpression CreateLambda(ScriptBlockAst scriptBlockAst, Func<Expression> blockFactory, Type delegateType = null)
-        {
-            if (delegateType == null)
+            if (!(delegateType != null || expectedParameterTypes != null || expectedReturnType != null))
             {
                 using (_scopeStack.NewScope(GetParameters(scriptBlockAst?.ParamBlock)))
                 {
@@ -1675,28 +1648,28 @@ namespace PSLambda
                 }
             }
 
-            if (!typeof(Delegate).IsAssignableFrom(delegateType))
-            {
-                throw new NotSupportedException();
-            }
-
             var scope =
                 _scopeStack.NewScope(
                     GetParameters(
                         scriptBlockAst?.ParamBlock,
-                        delegateType
-                            .GetMethod(Strings.DelegateInvokeMethodName)
-                            .GetParameters()
-                            .Select(p => p.ParameterType)
-                            .ToArray()));
+                        expectedParameterTypes));
 
             using (scope)
             {
+                if (delegateType == null)
+                {
+                    return Lambda(
+                        NewBlock(
+                            () => blockFactory(),
+                            expectedReturnType),
+                        _scopeStack.GetParameters());
+                }
+
                 return Lambda(
                     delegateType,
                     NewBlock(
                         () => blockFactory(),
-                        delegateType.GetMethod(Strings.DelegateInvokeMethodName).ReturnType),
+                        expectedReturnType),
                     _scopeStack.GetParameters());
             }
         }
@@ -1856,11 +1829,6 @@ namespace PSLambda
             return variable.Value.GetType();
         }
 
-        private void ReportNonConstantTypeAs(IScriptExtent extent)
-        {
-            ReportNotSupported(extent, nameof(ErrorStrings.NonConstantTypeAs), ErrorStrings.NonConstantTypeAs);
-        }
-
         private bool TryResolveType(ITypeName typeName, out Type resolvedType)
         {
             resolvedType = typeName.GetReflectionType();
@@ -1869,7 +1837,7 @@ namespace PSLambda
                 return true;
             }
 
-            ReportParseError(
+            Errors.ReportParseError(
                 typeName.Extent,
                 nameof(ErrorStrings.TypeNotFound),
                 string.Format(
@@ -1888,7 +1856,7 @@ namespace PSLambda
             }
             catch (InvalidOperationException)
             {
-                ReportParseError(
+                Errors.ReportParseError(
                     ast.Extent,
                     nameof(ErrorStrings.UnexpectedExpression),
                     ErrorStrings.UnexpectedExpression);
@@ -1910,6 +1878,33 @@ namespace PSLambda
                 .FirstOrDefault();
 
             return resolvedInterface != null;
+        }
+
+        private MemberBinder GetBinder(Ast ast)
+        {
+            if (_binder != null)
+            {
+                return _binder;
+            }
+
+            while (ast.Parent != null)
+            {
+                ast = ast.Parent;
+            }
+
+            var namespaces = new HashSet<string>(s_defaultNamespaces);
+            foreach (var ns in ((ScriptBlockAst)ast).UsingStatements)
+            {
+                if (ns.UsingStatementKind != UsingStatementKind.Namespace)
+                {
+                    continue;
+                }
+
+                namespaces.Add(ns.Name.Value);
+            }
+
+            _binder = new MemberBinder(BindingFlags.Public, namespaces.ToArray());
+            return _binder;
         }
     }
 }
