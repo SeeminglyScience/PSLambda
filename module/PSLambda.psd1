@@ -12,7 +12,7 @@
 RootModule = 'PSLambda.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.1.1'
+ModuleVersion = '0.2.0'
 
 # ID used to uniquely identify this module
 GUID = '242ef850-1f6d-4647-acbe-26d010c4a3f5'
@@ -84,13 +84,13 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Fix exceptions that occurred with:
-
-- Empty Hashtable initialization expressions
-- Switch statements with just a default block
-- Index operations on expressions typed explicitly as IEnumerable<>
-- The -as and -not operators
-- The -bor and -band operators when used against an Enum'
+        ReleaseNotes = @'
+- Add extension method resolution
+- Add generic parameter inference
+- Fix scriptblocks in method argument binding
+- Fix ForEach enumerator typing
+- Fix index expressions for non IList types
+'@
 
     } # End of PSData hashtable
 
