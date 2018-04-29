@@ -206,20 +206,6 @@ Describe 'Misc Language Features' {
             $delegate.Invoke() | Should -Be 'System'
         }
 
-        It 'indexed IEnumerable<> are typed properly' {
-            $delegate = New-PSDelegate {
-                $strings = generic(
-                    [System.Linq.Enumerable]::Select(
-                        ('test', 'test2', 'test3'),
-                        [func[string, string]]{ ($string) => { $string }}),
-                    [string], [string])
-
-                return $strings[1].EndsWith('2')
-            }
-
-            $delegate.Invoke() | Should -Be $true
-        }
-
         It 'can index IList' {
             $delegate = New-PSDelegate {
                 $list = [System.Collections.ArrayList]::new()
@@ -228,6 +214,23 @@ Describe 'Misc Language Features' {
             }
 
             $delegate.Invoke() | Should -Be $true
+        }
+
+        It 'can index custom indexers' {
+            $delegate = New-PSDelegate {
+                $pso = [psobject]::AsPSObject([System.Text.StringBuilder]::new())
+                $pso.Methods['Append'].Invoke(@('testing'))
+                return $pso
+            }
+
+            $result = $delegate.Invoke()
+            $result | Should -BeOfType System.Text.StringBuilder
+            $result.ToString() | Should -Be testing
+        }
+
+        It 'throws the correct message when indexer cannot be found' {
+            $expectedMsg = 'The indexer could not be determined for the type "System.Int32".'
+            { New-PSDelegate { (10)[0] }} | Should -Throw $expectedMsg
         }
     }
 }

@@ -25,15 +25,17 @@ Describe 'basic loop functionality' {
                     three = 'four'
                 }
 
-                $sb = [System.Text.StringBuilder]::new()
+                $results = [System.Collections.Generic.List[string]]::new()
                 foreach($item in $hashtable) {
-                    $sb.Append($item.Value.ToString())
+                    $results.Add($item.Value.ToString())
                 }
 
-                return $sb.ToString()
+                return $results
             }
 
-            $delegate.Invoke() | Should -Be twofour
+            $results = $delegate.Invoke()
+            $results | Should -Contain two
+            $results | Should -Contain four
         }
 
         It 'prioritizes IEnumerable<> over IDictionary' {
