@@ -6,6 +6,16 @@ namespace PSLambda
     internal class Strings
     {
         /// <summary>
+        /// Constant containing a string similar to "GetEnumerator".
+        /// </summary>
+        public const string GetEnumeratorMethodName = "GetEnumerator";
+
+        /// <summary>
+        /// Constant containing a string similar to "get_Current".
+        /// </summary>
+        public const string EnumeratorGetCurrentMethodName = "get_Current";
+
+        /// <summary>
         /// Constant containing a string similar to "psdelegate".
         /// </summary>
         public const string PSDelegateTypeAcceleratorName = "psdelegate";

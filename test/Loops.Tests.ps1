@@ -4,6 +4,82 @@ $manifestPath = "$PSScriptRoot\..\Release\$moduleName\*\$moduleName.psd1"
 Import-Module $manifestPath -Force
 
 Describe 'basic loop functionality' {
+    Context 'foreach statement tests' {
+        It 'can enumerate IEnumerable<>' {
+            $delegate = New-PSDelegate {
+                $total = 0
+                foreach($item in 0..10) {
+                    $total = $item + $total
+                }
+
+                return $total
+            }
+
+            $delegate.Invoke() | Should -Be 55
+        }
+
+        It 'can enumerate IDictionary' {
+            $delegate = New-PSDelegate {
+                $hashtable = @{
+                    one = 'two'
+                    three = 'four'
+                }
+
+                $sb = [System.Text.StringBuilder]::new()
+                foreach($item in $hashtable) {
+                    $sb.Append($item.Value.ToString())
+                }
+
+                return $sb.ToString()
+            }
+
+            $delegate.Invoke() | Should -Be twofour
+        }
+
+        It 'prioritizes IEnumerable<> over IDictionary' {
+            $delegate = New-PSDelegate {
+                $map = [System.Collections.Generic.Dictionary[string, int]]::new()
+                $map.Add('test', 10)
+                $map.Add('test2', 30)
+
+                $results = [System.Collections.Generic.List[int]]::new()
+                foreach ($item in $map) {
+                    $results.Add($item.Value)
+                }
+
+                return $results
+            }
+
+            $delegate.Invoke() | Should -Be 10, 30
+        }
+
+        It 'can enumerable IEnumerable' {
+            $delegate = New-PSDelegate {
+                $list = [System.Collections.ArrayList]::new()
+                $list.Add([object]10)
+                $list.Add('test2')
+
+                $results = [System.Collections.Generic.List[string]]::new()
+                foreach ($item in $list) {
+                    $results.Add($item.ToString())
+                }
+
+                return $results
+            }
+
+            $delegate.Invoke() | Should -Be 10, test2
+        }
+
+        It 'throws the correct message when target is not IEnumerable' {
+            $expectedMsg =
+                "The foreach statement cannot operate on variables of type " +
+                "'System.Int32' because 'System.Int32' does not contain a " +
+                "public definition for 'GetEnumerator'"
+
+            { New-PSDelegate { foreach ($a in 10) {}}} | Should -Throw $expectedMsg
+        }
+    }
+
     It 'for statement' {
         $delegate = New-PSDelegate {
             [int] $total = 0
@@ -15,21 +91,6 @@ Describe 'basic loop functionality' {
         }
 
         $delegate.Invoke() | Should -Be 45
-    }
-
-    It 'foreach statement' {
-        $delegate = New-PSDelegate {
-            [int[]] $numbers = 1, 2, 3, 4
-            [int] $total = 0
-
-            foreach($item in $numbers) {
-                $total = [int]$item + [int]$total
-            }
-
-            return $total
-        }
-
-        $delegate.Invoke() | Should -Be 10
     }
 
     It 'while statement' {

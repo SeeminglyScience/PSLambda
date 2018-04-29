@@ -185,7 +185,7 @@ namespace PSLambda
                             collectionVar,
                             Strings.AddMethodName,
                             Type.EmptyTypes,
-                            PSConvertTo<T>(Property(enumeratorVar, ReflectionCache.IEnumerator_Current))),
+                            PSConvertTo<T>(Call(enumeratorVar, ReflectionCache.IEnumerator_get_Current))),
                         Break(breakLabel)),
                     breakLabel),
                 Call(collectionVar, Strings.ToArrayMethodName, Type.EmptyTypes));
@@ -305,7 +305,7 @@ namespace PSLambda
                         IfThen(
                             PSEquals(
                                 item,
-                                Property(enumeratorVar, ReflectionCache.IEnumerator_Current),
+                                Call(enumeratorVar, ReflectionCache.IEnumerator_get_Current),
                                 isCaseSensitive),
                             Return(returnLabel, SpecialVariables.Constants[Strings.TrueVariableName])),
                         Return(returnLabel, SpecialVariables.Constants[Strings.FalseVariableName]))),
