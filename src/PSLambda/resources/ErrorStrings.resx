@@ -156,11 +156,11 @@
   <data name="InvalidGenericSyntax" xml:space="preserve">
     <value>Invalid syntax for generic method invocation. The syntax is "generic($Target.Method(arguments), [type], [type])".</value>
   </data>
-  <data name="MissingWithBody" xml:space="preserve">
-    <value>The with statement requires the third argument to be a ScriptBlock expression.</value>
+  <data name="MissingKeywordBody" xml:space="preserve">
+    <value>The {0} keyword requires the third argument to be a ScriptBlock expression.</value>
   </data>
-  <data name="MissingWithElements" xml:space="preserve">
-    <value>The with statement requires both a expression that evaluates to a System.IDisposable object and ScriptBlock expression as arguments.</value>
+  <data name="MissingKeywordElements" xml:space="preserve">
+    <value>The {0} keyword requires both a target expression and a ScriptBlock expression as arguments.</value>
   </data>
   <data name="NoMemberNameMatch" xml:space="preserve">
     <value>'{0}' does not contain a definition for '{1}' and no extension method '{1}' accepting a first argument of type '{0}' could be found.</value>

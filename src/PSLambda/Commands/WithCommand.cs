@@ -7,41 +7,28 @@ namespace PSLambda.Commands
     /// <summary>
     /// Provides handling for the "with" custom command.
     /// </summary>
-    internal class WithCommand : ICommandHandler
+    internal class WithCommand : ObjectAndBodyCommandHandler
     {
         /// <summary>
         /// Gets the name of the command.
         /// </summary>
-        public string CommandName { get; } = "with";
+        public override string CommandName { get; } = "with";
 
         /// <summary>
         /// Creates a Linq expression for a <see cref="CommandAst" /> representing
         /// the "with" command.
         /// </summary>
         /// <param name="commandAst">The AST to convert.</param>
+        /// <param name="targetAst">The AST containing the target of the keyword.</param>
+        /// <param name="bodyAst">The AST containing the body of the keyword.</param>
         /// <param name="visitor">The <see cref="CompileVisitor" /> requesting the expression.</param>
         /// <returns>An expression representing the command.</returns>
-        public Expression ProcessAst(CommandAst commandAst, CompileVisitor visitor)
+        protected override Expression ProcessObjectAndBody(
+            CommandAst commandAst,
+            CommandElementAst targetAst,
+            ScriptBlockExpressionAst bodyAst,
+            CompileVisitor visitor)
         {
-            if (commandAst.CommandElements.Count != 3)
-            {
-                visitor.Errors.ReportParseError(
-                    commandAst.Extent,
-                    nameof(ErrorStrings.MissingWithElements),
-                    ErrorStrings.MissingWithElements);
-                return Expression.Empty();
-            }
-
-            var bodyAst = commandAst.CommandElements[2] as ScriptBlockExpressionAst;
-            if (bodyAst == null)
-            {
-                visitor.Errors.ReportParseError(
-                    commandAst.Extent,
-                    nameof(ErrorStrings.MissingWithBody),
-                    ErrorStrings.MissingWithBody);
-                return Expression.Empty();
-            }
-
             var disposeVar = Expression.Variable(typeof(IDisposable));
             return visitor.NewBlock(() =>
                 Expression.Block(
@@ -50,7 +37,7 @@ namespace PSLambda.Commands
                     Expression.Assign(
                         disposeVar,
                         Expression.Convert(
-                            commandAst.CommandElements[1].Compile(visitor),
+                            targetAst.Compile(visitor),
                             typeof(IDisposable))),
                     Expression.TryFinally(
                         bodyAst.ScriptBlock.EndBlock.Compile(visitor),
