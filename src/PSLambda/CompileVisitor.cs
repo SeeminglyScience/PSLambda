@@ -431,20 +431,36 @@ namespace PSLambda
         {
             using (_loops.NewScope())
             {
-                var enumerator = Call(
-                    ReflectionCache.LanguagePrimitives_GetEnumerator,
-                    forEachStatementAst.Condition.Compile(this));
+                var condition = forEachStatementAst.Condition.Compile(this);
+                var canEnumerate = TryGetEnumeratorMethod(
+                    condition.Type,
+                    out MethodInfo getEnumeratorMethod,
+                    out MethodInfo getCurrentMethod);
+
+                if (!canEnumerate)
+                {
+                    Errors.ReportParseError(
+                        forEachStatementAst.Condition.Extent,
+                        nameof(ErrorStrings.ForEachInvalidEnumerable),
+                        string.Format(
+                            CultureInfo.CurrentCulture,
+                            ErrorStrings.ForEachInvalidEnumerable,
+                            condition.Type));
+
+                    Errors.ThrowIfAnyErrors();
+                    return Empty();
+                }
 
                 using (_scopeStack.NewScope())
                 {
                     var enumeratorRef = _scopeStack.GetVariable(
                         Strings.ForEachVariableName,
-                        typeof(IEnumerator));
+                        getEnumeratorMethod.ReturnType);
                     try
                     {
                         return Block(
                             _scopeStack.GetVariables(),
-                            Assign(enumeratorRef, enumerator),
+                            Assign(enumeratorRef, Call(condition, getEnumeratorMethod)),
                             Loop(
                                 IfThenElse(
                                     test: Call(enumeratorRef, ReflectionCache.IEnumerator_MoveNext),
@@ -454,8 +470,8 @@ namespace PSLambda
                                             Assign(
                                                 _scopeStack.GetVariable(
                                                     forEachStatementAst.Variable.VariablePath.UserPath,
-                                                    typeof(object)),
-                                                Property(enumeratorRef, ReflectionCache.IEnumerator_Current)),
+                                                    getCurrentMethod.ReturnType),
+                                                Call(enumeratorRef, getCurrentMethod)),
                                             forEachStatementAst.Body.Compile(this)
                                         }),
                                     ifFalse: Break(_loops.Break)),
@@ -1905,6 +1921,62 @@ namespace PSLambda
 
             _binder = new MemberBinder(BindingFlags.Public, namespaces.ToArray());
             return _binder;
+        }
+
+        private bool TryGetEnumeratorMethod(
+            Type type,
+            out MethodInfo getEnumeratorMethod,
+            out MethodInfo getCurrentMethod)
+        {
+            var canFallbackToEnumerable = false;
+            var canFallbackToIDictionary = false;
+            var interfaces = type.GetInterfaces();
+            for (var i = 0; i < interfaces.Length; i++)
+            {
+                if (interfaces[i] == typeof(IEnumerable))
+                {
+                    canFallbackToEnumerable = true;
+                    continue;
+                }
+
+                if (interfaces[i] == typeof(IDictionary))
+                {
+                    canFallbackToIDictionary = true;
+                    continue;
+                }
+
+                if (interfaces[i].IsConstructedGenericType &&
+                    interfaces[i].GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                {
+                    getEnumeratorMethod = interfaces[i].GetMethod(
+                        Strings.GetEnumeratorMethodName,
+                        Type.EmptyTypes);
+
+                    getCurrentMethod =
+                        getEnumeratorMethod.ReturnType.GetMethod(
+                            Strings.EnumeratorGetCurrentMethodName,
+                            Type.EmptyTypes);
+                    return true;
+                }
+            }
+
+            if (canFallbackToIDictionary)
+            {
+                getEnumeratorMethod = ReflectionCache.IDictionary_GetEnumerator;
+                getCurrentMethod = ReflectionCache.IDictionaryEnumerator_get_Entry;
+                return true;
+            }
+
+            if (canFallbackToEnumerable)
+            {
+                getEnumeratorMethod = ReflectionCache.IEnumerable_GetEnumerator;
+                getCurrentMethod = ReflectionCache.IEnumerator_get_Current;
+                return true;
+            }
+
+            getEnumeratorMethod = null;
+            getCurrentMethod = null;
+            return false;
         }
     }
 }

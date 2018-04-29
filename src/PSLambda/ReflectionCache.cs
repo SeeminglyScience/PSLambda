@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Management.Automation;
 using System.Reflection;
@@ -189,10 +190,16 @@ namespace PSLambda
             typeof(Hashtable).GetConstructor(new[] { typeof(int), typeof(IEqualityComparer) });
 
         /// <summary>
-        /// Resolves to <see cref="IEnumerator.Current" />
+        /// Resolves to <see cref="IEnumerator.get_Current" />
         /// </summary>
-        public static readonly PropertyInfo IEnumerator_Current =
-            typeof(IEnumerator).GetProperty("Current");
+        public static readonly MethodInfo IEnumerator_get_Current =
+            typeof(IEnumerator).GetMethod(Strings.EnumeratorGetCurrentMethodName, Type.EmptyTypes);
+
+        /// <summary>
+        /// Resolves to <see cref="IEnumerable.GetEnumerator" />
+        /// </summary>
+        public static readonly MethodInfo IEnumerable_GetEnumerator =
+            typeof(IEnumerable).GetMethod(Strings.GetEnumeratorMethodName, Type.EmptyTypes);
 
         /// <summary>
         /// Resolves to <see cref="StringComparer.CurrentCultureIgnoreCase" />.
@@ -225,5 +232,29 @@ namespace PSLambda
         /// </summary>
         public static readonly MethodInfo Monitor_Exit =
             typeof(System.Threading.Monitor).GetMethod("Exit", new[] { typeof(object) });
+
+        /// <summary>
+        /// Resolves to <see cref="IEnumerable{T}.GetEnumerator" />.
+        /// </summary>
+        public static readonly MethodInfo IEnumerable_T_GetEnumerator =
+            typeof(IEnumerable<>).GetMethod(Strings.GetEnumeratorMethodName, Type.EmptyTypes);
+
+        /// <summary>
+        /// Resolves to <see cref="IEnumerator{T}.get_Current" />.
+        /// </summary>
+        public static readonly MethodInfo IEnumerator_T_get_Current =
+            typeof(IEnumerator<>).GetMethod(Strings.EnumeratorGetCurrentMethodName, Type.EmptyTypes);
+
+        /// <summary>
+        /// Resolves to <see cref="IDictionary.GetEnumerator" />.
+        /// </summary>
+        public static readonly MethodInfo IDictionary_GetEnumerator =
+            typeof(IDictionary).GetMethod(Strings.GetEnumeratorMethodName, Type.EmptyTypes);
+
+        /// <summary>
+        /// Resolves to <see cref="IDictionaryEnumerator.get_Entry" />.
+        /// </summary>
+        public static readonly MethodInfo IDictionaryEnumerator_get_Entry =
+            typeof(IDictionaryEnumerator).GetMethod("get_Entry", Type.EmptyTypes);
     }
 }

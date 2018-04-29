@@ -168,4 +168,7 @@
   <data name="NoMemberArgumentMatch" xml:space="preserve">
     <value>'{0}' does not contain a definition for a method named '{1}' that takes the specified arguments.</value>
   </data>
+  <data name="ForEachInvalidEnumerable" xml:space="preserve">
+    <value>The foreach statement cannot operate on variables of type '{0}' because '{0}' does not contain a public definition for 'GetEnumerator'</value>
+  </data>
 </root>
