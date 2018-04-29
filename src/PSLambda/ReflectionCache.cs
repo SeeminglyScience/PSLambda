@@ -211,5 +211,19 @@ namespace PSLambda
         /// </summary>
         public static readonly MethodInfo ExpressionUtils_GetRange =
             typeof(ExpressionUtils).GetMethod("GetRange", BindingFlags.Static | BindingFlags.NonPublic);
+
+        /// <summary>
+        /// Resolves to <see cref="System.Threading.Monitor.Enter(object, ref bool)" />.
+        /// </summary>
+        public static readonly MethodInfo Monitor_Enter =
+            typeof(System.Threading.Monitor).GetMethod(
+                "Enter",
+                new[] { typeof(object), typeof(bool).MakeByRefType() });
+
+        /// <summary>
+        /// Resolves to <see cref="System.Threading.Monitor.Exit(object)" />.
+        /// </summary>
+        public static readonly MethodInfo Monitor_Exit =
+            typeof(System.Threading.Monitor).GetMethod("Exit", new[] { typeof(object) });
     }
 }

@@ -20,6 +20,7 @@ namespace PSLambda.Commands
             RegisterCommand(new DefaultCommand());
             RegisterCommand(new WithCommand());
             RegisterCommand(new GenericCommand());
+            RegisterCommand(new LockCommand());
         }
 
         /// <summary>
