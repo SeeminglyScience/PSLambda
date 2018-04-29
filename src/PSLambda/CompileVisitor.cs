@@ -555,74 +555,41 @@ namespace PSLambda
                     indexExpressionAst.Index.Compile(this));
             }
 
-            if (TryFindGenericInterface(source.Type, typeof(IList<>), out Type genericList))
+            var defaultMember =
+                source.Type.GetCustomAttribute<DefaultMemberAttribute>(inherit: true);
+
+            if (defaultMember == null)
             {
-                return MakeIndex(
-                    source,
-                    genericList.GetProperty(Strings.DefaultIndexerPropertyName),
-                    new[] { indexExpressionAst.Index.Compile(this) });
+                Errors.ReportParseError(
+                    indexExpressionAst.Extent,
+                    nameof(ErrorStrings.UnknownIndexer),
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        ErrorStrings.UnknownIndexer,
+                        source.Type.FullName));
+                return Empty();
             }
 
-            if (TryFindGenericInterface(source.Type, typeof(IDictionary<,>), out Type genericDictionary))
+            var index = indexExpressionAst.Index.Compile(this);
+            var indexerProperty = source.Type
+                .GetProperty(defaultMember.MemberName, new[] { index.Type });
+
+            if (indexerProperty == null)
             {
-                return MakeIndex(
-                    source,
-                    genericDictionary.GetProperty(Strings.DefaultIndexerPropertyName),
-                    new[] { indexExpressionAst.Index.Compile(this) });
+                Errors.ReportParseError(
+                    indexExpressionAst.Extent,
+                    nameof(ErrorStrings.UnknownIndexer),
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        ErrorStrings.UnknownIndexer,
+                        source.Type.FullName));
+                return Empty();
             }
 
-            if (TryFindGenericInterface(source.Type, typeof(IEnumerable<>), out Type genericEnumerable) ||
-                (source.Type.IsGenericType &&
-                source.Type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
-            {
-                if (genericEnumerable == null)
-                {
-                    genericEnumerable = source.Type;
-                }
-
-                Expression index;
-                try
-                {
-                    index = Convert(indexExpressionAst.Index.Compile(this), typeof(int));
-                }
-                catch (InvalidOperationException e)
-                {
-                    Errors.ReportParseError(indexExpressionAst.Index.Extent, e);
-                    return Empty();
-                }
-
-                return Call(
-                    typeof(Enumerable),
-                    Strings.ElementAtOrDefaultMethodName,
-                    genericEnumerable.GetGenericArguments(),
-                    source,
-                    index);
-            }
-
-            if (typeof(System.Collections.IList).IsAssignableFrom(source.Type))
-            {
-                return MakeIndex(
-                    source,
-                    ReflectionCache.IList_Item,
-                    new[] { indexExpressionAst.Index.Compile(this) });
-            }
-
-            if (typeof(System.Collections.IDictionary).IsAssignableFrom(source.Type))
-            {
-                return MakeIndex(
-                    source,
-                    ReflectionCache.IDictionary_Item,
-                    new[] { indexExpressionAst.Index.Compile(this) });
-            }
-
-            Errors.ReportParseError(
-                indexExpressionAst.Extent,
-                nameof(ErrorStrings.UnknownIndexer),
-                string.Format(
-                    CultureInfo.CurrentCulture,
-                    ErrorStrings.UnknownIndexer,
-                    source.Type.FullName));
-            return Empty();
+            return Property(
+                source,
+                indexerProperty,
+                index);
         }
 
         public object VisitInvokeMemberExpression(InvokeMemberExpressionAst invokeMemberExpressionAst)
