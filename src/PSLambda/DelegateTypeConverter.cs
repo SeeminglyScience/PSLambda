@@ -71,15 +71,13 @@ namespace PSLambda
         {
             lock (s_syncObject)
             {
-                Dictionary<Type, Delegate> cacheEntry;
-                if (!s_delegateCache.TryGetValue(psDelegate, out cacheEntry))
+                if (!s_delegateCache.TryGetValue(psDelegate, out Dictionary<Type, Delegate> cacheEntry))
                 {
                     cacheEntry = new Dictionary<Type, Delegate>();
                     s_delegateCache.Add(psDelegate, cacheEntry);
                 }
 
-                Delegate compiledDelegate;
-                if (!cacheEntry.TryGetValue(destinationType, out compiledDelegate))
+                if (!cacheEntry.TryGetValue(destinationType, out Delegate compiledDelegate))
                 {
                     compiledDelegate = CompileVisitor.CompileAst(
                         psDelegate.EngineIntrinsics,

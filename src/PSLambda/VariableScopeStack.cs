@@ -54,6 +54,17 @@ namespace PSLambda
         }
 
         /// <summary>
+        /// Creates a new variable expression without looking at previous scopes.
+        /// </summary>
+        /// <param name="name">The name of the variable.</param>
+        /// <param name="type">The type of the variable.</param>
+        /// <returns>The variable <see cref="Expression" />.</returns>
+        internal ParameterExpression NewVariable(string name, Type type)
+        {
+            return _current.NewVariable(name, type);
+        }
+
+        /// <summary>
         /// Gets a variable <see cref="Expression" /> from the current or a parent scope.
         /// </summary>
         /// <param name="variableExpressionAst">
@@ -102,5 +113,48 @@ namespace PSLambda
         {
             return _current.Parameters.Values.ToArray();
         }
+
+        /// <summary>
+        /// Gets the automatic variable <c>$_</c> or <c>$PSItem</c> from the
+        /// current scope, or closest parent scope where it is defined.
+        /// </summary>
+        /// <param name="dollarUnder">
+        /// The parameter expression referencing dollar under if defined;
+        /// otherwise <see langword="null" />.
+        /// </param>
+        /// <returns>
+        /// <see langword="true" /> if a defined dollar under variable was
+        /// found; otherwise <see langword="false" />.
+        /// </returns>
+        internal bool TryGetDollarUnder(out ParameterExpression dollarUnder)
+        {
+            dollarUnder = GetDollarUnder();
+            return dollarUnder != null;
+        }
+
+        /// <summary>
+        /// Gets the automatic variable <c>$_</c> or <c>$PSItem</c> from the
+        /// current scope, or closest parent scope where it is defined.
+        /// </summary>
+        /// <returns>
+        /// The parameter expression referencing dollar under if defined;
+        /// otherwise <see langword="null" />.
+        /// </returns>
+        internal ParameterExpression GetDollarUnder() => _current.GetDollarUnder();
+
+        /// <summary>
+        /// Sets the automatic variable <c>$_</c> or <c>$PSItem</c> in the current
+        /// scope. If the variable exists in a parent scope and the type is the same,
+        /// then the parent variable will be used. If the variable exists in a parent
+        /// scope but the type is not the same, the variable will be renamed behind
+        /// the scenes.
+        /// </summary>
+        /// <param name="type">
+        /// The static type that dollar under should contain.
+        /// </param>
+        /// <returns>
+        /// The parameter expression referencing dollar under.
+        /// </returns>
+        internal ParameterExpression SetDollarUnder(Type type) => _current.SetDollarUnder(type);
     }
 }

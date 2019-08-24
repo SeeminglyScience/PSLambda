@@ -42,49 +42,30 @@
             "args": [ "-Task", "Clean" ],
         },
         {
+            "label": "Quick Build",
+            "command": "dotnet",
+            "args": [ "build", "/property:GenerateFullPaths=true" ],
+            "group": { "kind": "build", "isDefault": true, },
+            "problemMatcher": "$msCompile",
+        },
+        {
             "label": "Build",
-            "command": "Invoke-Build",
-            "group": {
-                "kind": "build",
-                "isDefault": true,
-            },
-            "problemMatcher": {
-                "base": "$msCompile",
-                "fileLocation": [ "relative", "${workspaceRoot}/src/PSLambda" ],
-            },
+            "command": "& ./build.ps1 -Configuration Release -Build",
+            "group": "build",
         },
         {
             "label": "Test",
-            "command": "Invoke-Build",
-            "args": [ "-Task", "Test" ],
-            "group": {
-                "kind": "test",
-                "isDefault": true,
-            },
+            "command": "& ./build.ps1 -Configuration Release -Test",
+            "group": { "kind": "test", "isDefault": true, },
         },
         {
             "label": "Test With Coverage",
+            "command": "& ./build.ps1 -Configuration Debug -Test -GenerateCodeCoverage",
             "group": "test",
-            "command": "Invoke-Build",
-            "args": [ "-Task", "Test", "-GenerateCodeCoverage" ],
-        },
-        {
-            "label": "Build and Test",
-            "group": "test",
-            "command": "Invoke-Build",
-            "args": [ "-Task", "Prerelease"],
-        },
-        {
-            "label": "Build and Test With Coverage",
-            "group": "test",
-            "command": "Invoke-Build",
-            "args": [ "-Task", "Prerelease", "-GenerateCodeCoverage"],
         },
         {
             "label": "Install",
-            "command": "Invoke-Build",
-            "args": [ "-Task", "Install", "-Configuration", "Release" ],
+            "command": "& ./build.ps1 -Configuration Release -Task Install",
         }
     ]
 }
-

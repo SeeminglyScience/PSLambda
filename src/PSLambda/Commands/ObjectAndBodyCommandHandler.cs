@@ -6,7 +6,7 @@ namespace PSLambda.Commands
 {
     /// <summary>
     /// Provides a base for commands that follow the format of
-    /// `commandName ($objectTarget) { body }`
+    /// `commandName ($objectTarget) { body }`.
     /// </summary>
     internal abstract class ObjectAndBodyCommandHandler : ICommandHandler
     {
@@ -36,8 +36,7 @@ namespace PSLambda.Commands
                 return Expression.Empty();
             }
 
-            var bodyAst = commandAst.CommandElements[2] as ScriptBlockExpressionAst;
-            if (bodyAst == null)
+            if (!(commandAst.CommandElements[2] is ScriptBlockExpressionAst bodyAst))
             {
                 visitor.Errors.ReportParseError(
                     commandAst.Extent,

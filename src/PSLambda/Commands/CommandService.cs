@@ -26,7 +26,7 @@ namespace PSLambda.Commands
         /// <summary>
         /// Registers a command handler.
         /// </summary>
-        /// <param name="handler">The handler to register</param>
+        /// <param name="handler">The handler to register.</param>
         public void RegisterCommand(ICommandHandler handler)
         {
             if (_commandRegistry.ContainsKey(handler.CommandName))

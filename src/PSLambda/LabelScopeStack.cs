@@ -33,7 +33,7 @@ namespace PSLambda
         /// Creates a new scope in which the <c>return</c> keyword will work while specifying an
         /// expected return type.
         /// </summary>
-        /// <param name="returnType">The expected return type</param>
+        /// <param name="returnType">The expected return type.</param>
         /// <returns>
         /// A <see cref="IDisposable" /> handle that will return to the previous scope when disposed.
         /// </returns>
@@ -64,7 +64,7 @@ namespace PSLambda
                     {
                         Expression.Label(
                             _current.Label,
-                            Expression.Default(_current.ReturnType))
+                            Expression.Default(_current.ReturnType)),
                     }).ToArray();
             }
 

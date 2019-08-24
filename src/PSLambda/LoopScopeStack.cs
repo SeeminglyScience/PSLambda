@@ -34,7 +34,7 @@ namespace PSLambda
             {
                 Parent = _current,
                 Break = Expression.Label(),
-                Continue = Expression.Label()
+                Continue = Expression.Label(),
             };
 
             return new ScopeHandle(() => _current = _current?.Parent);

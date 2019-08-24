@@ -6,6 +6,8 @@
   </Localization>
   <IncludeAll Action="Warning" />
   <Rules AnalyzerId="Microsoft.Analyzers.NativeCodeAnalysis" RuleNamespace="Microsoft.Rules.Native">
+    <!-- Opening parenthesis must not be preceded by a space. (Doesn't work right with value tuples) -->
+    <Rule Id="SA1008" Action="None" />
     <!--A call to an instance member of the local class or a base class is not prefixed with ‘this.’, within a C# code file.-->
     <Rule Id="SA1101" Action="None" />
     <!--A C# statement containing opening and closing curly brackets is written completely on a single line.-->
@@ -28,4 +30,3 @@
     <Rule Id="SA1401" Action="None" />
   </Rules>
 </RuleSet>
-

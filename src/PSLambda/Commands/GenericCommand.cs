@@ -28,20 +28,17 @@ namespace PSLambda.Commands
                 return ReportInvalidSyntax(commandAst.Extent, visitor);
             }
 
-            var paren = commandAst.CommandElements[1] as ParenExpressionAst;
-            if (paren == null)
+            if (!(commandAst.CommandElements[1] is ParenExpressionAst paren))
             {
                 return ReportInvalidSyntax(commandAst.Extent, visitor);
             }
 
-            var pipeline = paren.Pipeline as PipelineAst;
-            if (pipeline == null || pipeline.PipelineElements.Count != 1)
+            if (!(paren.Pipeline is PipelineAst pipeline) || pipeline.PipelineElements.Count != 1)
             {
                 return ReportInvalidSyntax(commandAst.Extent, visitor);
             }
 
-            var commandExpression = pipeline.PipelineElements[0] as CommandExpressionAst;
-            if (commandExpression == null)
+            if (!(pipeline.PipelineElements[0] is CommandExpressionAst commandExpression))
             {
                 return ReportInvalidSyntax(commandAst.Extent, visitor);
             }
@@ -52,8 +49,7 @@ namespace PSLambda.Commands
                 return ReportInvalidSyntax(commandAst.Extent, visitor);
             }
 
-            var memberExpression = arrayLiteral.Elements[0] as InvokeMemberExpressionAst;
-            if (memberExpression == null)
+            if (!(arrayLiteral.Elements[0] is InvokeMemberExpressionAst memberExpression))
             {
                 return ReportInvalidSyntax(commandAst.Extent, visitor);
             }

@@ -339,7 +339,7 @@ namespace PSLambda
 
         /// <summary>
         /// Creates an <see cref="Expression" /> representing the evaluation of the "DotDot" operator
-        /// from the PowerShell engine. (e.g. 0..100)
+        /// from the PowerShell engine (e.g. 0..100).
         /// </summary>
         /// <param name="lhs">The <see cref="Expression" /> on the left hand side.</param>
         /// <param name="rhs">The <see cref="Expression" /> on the right hand side.</param>

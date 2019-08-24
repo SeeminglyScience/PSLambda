@@ -112,4 +112,33 @@ Describe 'try/catch/finally tests' {
         $delegate.Invoke()
         $didFire | Should -Be $true
     }
+
+    It 'assigns $_ in catch all' {
+        $delegate = New-PSDelegate {
+            try {
+                throw [InvalidOperationException]::new()
+            } catch {
+                return 'caught "{0}"' -f $PSItem.GetType().FullName
+            }
+
+            return 'failed'
+        }
+
+        $delegate.Invoke() | Should -Be 'caught "System.InvalidOperationException"'
+    }
+
+    It 'strongly types $_ in explicitly typed catch' {
+        $delegate = New-PSDelegate {
+            try {
+                throw [System.Management.Automation.RuntimeException]::new()
+            } catch [System.Management.Automation.RuntimeException] {
+                return $PSItem.ErrorRecord
+            }
+
+            return default([System.Management.Automation.ErrorRecord])
+        }
+
+        $record = $delegate.Invoke()
+        $record | Should -BeOfType System.Management.Automation.ErrorRecord
+    }
 }
