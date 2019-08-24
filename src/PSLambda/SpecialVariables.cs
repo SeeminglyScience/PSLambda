@@ -27,7 +27,7 @@ namespace PSLambda
             { "PSVersionTable", typeof(System.Collections.Hashtable) },
             { "PSEdition", typeof(string) },
             { "ShellId", typeof(string) },
-            { "MaximumHistoryCount", typeof(int) }
+            { "MaximumHistoryCount", typeof(int) },
         };
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace PSLambda
         {
             { Strings.TrueVariableName, Expression.Constant(true, typeof(bool)) },
             { Strings.FalseVariableName, Expression.Constant(false, typeof(bool)) },
-            { Strings.NullVariableName, Expression.Constant(null) }
+            { Strings.NullVariableName, Expression.Constant(null) },
         };
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace PSLambda
             "PSUICulture",
             "PSVersionTable",
             "PSEdition",
-            "ShellId"
+            "ShellId",
         };
     }
 }

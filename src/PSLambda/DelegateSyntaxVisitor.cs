@@ -10,12 +10,6 @@ namespace PSLambda
     /// </summary>
     internal class DelegateSyntaxVisitor : ICustomAstVisitor
     {
-        private static RedirectionAst[] s_emptyRedirections = new RedirectionAst[0];
-
-        private static TrapStatementAst[] s_emptyTraps = new TrapStatementAst[0];
-
-        private static AttributeAst[] s_emptyAttributes = new AttributeAst[0];
-
         private readonly IParseErrorWriter _errorWriter;
 
         private readonly List<Tuple<ITypeName, VariableExpressionAst>> _variables = new List<Tuple<ITypeName, VariableExpressionAst>>();
@@ -93,7 +87,7 @@ namespace PSLambda
             var paramBlock =
                 new ParamBlockAst(
                     _paramBlockExtent,
-                    s_emptyAttributes,
+                    Array.Empty<AttributeAst>(),
                     parameters);
 
             return new ScriptBlockAst(
@@ -145,14 +139,12 @@ namespace PSLambda
                 assignmentStatementAst.Left,
                 _variables);
 
-            var pipeline = assignmentStatementAst.Right as PipelineAst;
-            if (pipeline == null)
+            if (!(assignmentStatementAst.Right is PipelineAst pipeline))
             {
                 return null;
             }
 
-            var commandAst = pipeline.PipelineElements[0] as CommandAst;
-            if (commandAst == null ||
+            if (!(pipeline.PipelineElements[0] is CommandAst commandAst) ||
                 commandAst.GetCommandName() != Strings.DelegateSyntaxCommandName ||
                 commandAst.CommandElements.Count != 2)
             {
@@ -172,13 +164,13 @@ namespace PSLambda
                     new CommandExpressionAst(
                         expression.Extent,
                         (ExpressionAst)expression.Copy(),
-                        s_emptyRedirections)
+                        Array.Empty<RedirectionAst>()),
                 };
 
             var statementBlockAst = new StatementBlockAst(
                 commandAst.CommandElements[1].Extent,
                 statements,
-                s_emptyTraps);
+                Array.Empty<TrapStatementAst>());
 
             return new NamedBlockAst(
                 commandAst.CommandElements[1].Extent,
@@ -190,7 +182,7 @@ namespace PSLambda
 
         private class DelegateParameterVisitor : AstVisitor
         {
-            private static ITypeName s_objectTypeName = new TypeName(
+            private static readonly ITypeName s_objectTypeName = new TypeName(
                 Empty.Extent,
                 typeof(object).FullName);
 
@@ -204,8 +196,11 @@ namespace PSLambda
                 ExpressionAst expression,
                 List<Tuple<ITypeName, VariableExpressionAst>> variables)
             {
-                var visitor = new DelegateParameterVisitor();
-                visitor._variables = variables;
+                var visitor = new DelegateParameterVisitor
+                {
+                    _variables = variables,
+                };
+
                 expression.Visit(visitor);
             }
 

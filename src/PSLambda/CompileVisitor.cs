@@ -9,8 +9,8 @@ using System.Management.Automation.Language;
 using System.Reflection;
 using PSLambda.Commands;
 
-using static PSLambda.ExpressionUtils;
 using static System.Linq.Expressions.Expression;
+using static PSLambda.ExpressionUtils;
 
 namespace PSLambda
 {
@@ -22,7 +22,7 @@ namespace PSLambda
     {
         private static readonly HashSet<string> s_defaultNamespaces = new HashSet<string>()
         {
-            "System.Linq"
+            "System.Linq",
         };
 
         private static readonly CommandService s_commands = new CommandService();
@@ -43,9 +43,9 @@ namespace PSLambda
 
         private readonly VariableScopeStack _scopeStack = new VariableScopeStack();
 
-        private MemberBinder _binder;
+        private readonly Dictionary<string, PSVariable> _locals = new Dictionary<string, PSVariable>();
 
-        private Dictionary<string, PSVariable> _locals = new Dictionary<string, PSVariable>();
+        private MemberBinder _binder;
 
         private Dictionary<string, PSVariable> _allScopes;
 
@@ -315,14 +315,30 @@ namespace PSLambda
 
         public object VisitCatchClause(CatchClauseAst catchClauseAst)
         {
-            return Catch(
-                catchClauseAst.IsCatchAll
-                    ? typeof(Exception)
-                    : catchClauseAst.CatchTypes.Count() > 1
-                        ? typeof(Exception)
-                        : catchClauseAst.CatchTypes.First().TypeName.GetReflectionType()
-                        ?? typeof(Exception),
-                NewBlock(() => catchClauseAst.Body.Compile(this), typeof(void)));
+            static Type GetExceptionType(CatchClauseAst ast)
+            {
+                if (ast.IsCatchAll || ast.CatchTypes.Count > 1)
+                {
+                    return typeof(Exception);
+                }
+
+                return ast.CatchTypes.First().TypeName.GetReflectionType() ?? typeof(Exception);
+            }
+
+            Type catchType = GetExceptionType(catchClauseAst);
+
+            using (_scopeStack.NewScope())
+            {
+                ParameterExpression dollarUnder = _scopeStack.SetDollarUnder(catchType);
+                Expression catchBody = catchClauseAst.Body.Compile(this);
+
+                if (catchBody.Type != typeof(void))
+                {
+                    catchBody = Block(typeof(void), catchBody);
+                }
+
+                return Catch(dollarUnder, catchBody);
+            }
         }
 
         public object VisitCommandExpression(CommandExpressionAst commandExpressionAst)
@@ -350,8 +366,7 @@ namespace PSLambda
 
         public object VisitConvertExpression(ConvertExpressionAst convertExpressionAst)
         {
-            Type resolvedType;
-            if (!TryResolveType(convertExpressionAst.Attribute, out resolvedType))
+            if (!TryResolveType(convertExpressionAst.Attribute, out Type resolvedType))
             {
                 return Empty();
             }
@@ -386,7 +401,7 @@ namespace PSLambda
                                 body,
                                 Break(_loops.Break)),
                             _loops.Break,
-                            _loops.Continue)
+                            _loops.Continue),
                     };
                 }
             });
@@ -408,7 +423,7 @@ namespace PSLambda
                                 body,
                                 Break(_loops.Break)),
                             _loops.Break,
-                            _loops.Continue)
+                            _loops.Continue),
                     };
                 }
             });
@@ -472,7 +487,7 @@ namespace PSLambda
                                                     forEachStatementAst.Variable.VariablePath.UserPath,
                                                     getCurrentMethod.ReturnType),
                                                 Call(enumeratorRef, getCurrentMethod)),
-                                            forEachStatementAst.Body.Compile(this)
+                                            forEachStatementAst.Body.Compile(this),
                                         }),
                                     ifFalse: Break(_loops.Break)),
                                 _loops.Break,
@@ -503,11 +518,11 @@ namespace PSLambda
                                     NewBlock(() => new[]
                                     {
                                         forStatementAst.Body.Compile(this),
-                                        forStatementAst.Iterator?.Compile(this) ?? Empty()
+                                        forStatementAst.Iterator?.Compile(this) ?? Empty(),
                                     }),
                                     Break(_loops.Break)),
                                 _loops.Break,
-                                _loops.Continue)
+                                _loops.Continue),
                         };
                     }
                 });
@@ -599,16 +614,14 @@ namespace PSLambda
 
         public object VisitMemberExpression(MemberExpressionAst memberExpressionAst)
         {
-            string memberName;
-            if (!TryResolveConstant(memberExpressionAst.Member, out memberName))
+            if (!TryResolveConstant(memberExpressionAst.Member, out string memberName))
             {
                 return Empty();
             }
 
             if (memberExpressionAst.Static)
             {
-                Type resolvedType;
-                if (!TryResolveType(memberExpressionAst.Expression, out resolvedType))
+                if (!TryResolveType(memberExpressionAst.Expression, out Type resolvedType))
                 {
                     return Empty();
                 }
@@ -801,7 +814,7 @@ namespace PSLambda
                         return new[]
                         {
                             switchStatementAst.Default.Compile(this),
-                            Label(_loops.Break)
+                            Label(_loops.Break),
                         };
                     }
 
@@ -830,7 +843,7 @@ namespace PSLambda
                             defaultBlock,
                             ReflectionCache.ExpressionUtils_PSEqualsIgnoreCase,
                             clauses),
-                        Label(_loops.Break)
+                        Label(_loops.Break),
                     };
                 }
             });
@@ -937,6 +950,12 @@ namespace PSLambda
 
         public object VisitVariableExpression(VariableExpressionAst variableExpressionAst)
         {
+            bool isDollarUnder = VariableUtils.IsDollarUnder(variableExpressionAst);
+            if (isDollarUnder && _scopeStack.TryGetDollarUnder(out ParameterExpression dollarUnder))
+            {
+                return dollarUnder;
+            }
+
             if (SpecialVariables.Constants.TryGetValue(variableExpressionAst.VariablePath.UserPath, out Expression expression))
             {
                 return expression;
@@ -952,7 +971,10 @@ namespace PSLambda
                 bool alreadyDefined = false;
                 try
                 {
-                    return _scopeStack.GetVariable(variableExpressionAst, out alreadyDefined);
+                    if (!isDollarUnder)
+                    {
+                        return _scopeStack.GetVariable(variableExpressionAst, out alreadyDefined);
+                    }
                 }
                 finally
                 {
@@ -1216,16 +1238,14 @@ namespace PSLambda
                 arguments = invokeMemberExpressionAst?.Arguments?.ToArray() ?? new Ast[0];
             }
 
-            string memberName;
-            if (!TryResolveConstant<string>(invokeMemberExpressionAst.Member, out memberName))
+            if (!TryResolveConstant(invokeMemberExpressionAst.Member, out string memberName))
             {
                 return Empty();
             }
 
             if (invokeMemberExpressionAst.Static)
             {
-                Type resolvedType;
-                if (!TryResolveType(invokeMemberExpressionAst.Expression, out resolvedType))
+                if (!TryResolveType(invokeMemberExpressionAst.Expression, out Type resolvedType))
                 {
                     return Empty();
                 }
@@ -1358,7 +1378,7 @@ namespace PSLambda
         /// The <see cref="Ast" /> that is expected to hold a type literal expression.
         /// </param>
         /// <param name="resolvedType">The <see cref="Type" /> if resolution was successful.</param>
-        /// <returns><c>true</c> if resolution was successful, otherwise <c>false</c></returns>
+        /// <returns><c>true</c> if resolution was successful, otherwise <c>false</c>.</returns>
         internal bool TryResolveType(Ast ast, out Type resolvedType)
         {
             if (ast == null)
@@ -1510,15 +1530,12 @@ namespace PSLambda
                 return false;
             }
 
-            var typeExpression = ast.Arguments[0] as TypeExpressionAst;
-
-            if (typeExpression == null)
+            if (!(ast.Arguments[0] is TypeExpressionAst typeExpression))
             {
                 return false;
             }
 
-            var genericTypeName = typeExpression.TypeName as GenericTypeName;
-            if (genericTypeName == null)
+            if (!(typeExpression.TypeName is GenericTypeName genericTypeName))
             {
                 return false;
             }
@@ -1660,7 +1677,7 @@ namespace PSLambda
         private ParameterExpression GetParameter(ParameterAst parameterAst, Type expectedType)
         {
             return Parameter(
-                expectedType == null ? GetParameterType(parameterAst) : expectedType,
+                expectedType ?? GetParameterType(parameterAst),
                 parameterAst.Name.VariablePath.UserPath);
         }
 
@@ -1751,15 +1768,13 @@ namespace PSLambda
         {
             if (_allScopes == null)
             {
-                using (var pwsh = PowerShell.Create(RunspaceMode.CurrentRunspace))
-                {
-                    _allScopes =
-                        pwsh.AddCommand("Microsoft.PowerShell.Utility\\Get-Variable")
-                            .AddParameter("Scope", "Global")
-                            .Invoke<PSVariable>()
-                            .Where(v => v.Options.HasFlag(ScopedItemOptions.AllScope))
-                            .ToDictionary(v => v.Name, StringComparer.OrdinalIgnoreCase);
-                }
+                using var pwsh = PowerShell.Create(RunspaceMode.CurrentRunspace);
+                _allScopes = pwsh
+                    .AddCommand("Microsoft.PowerShell.Utility\\Get-Variable")
+                    .AddParameter("Scope", "Global")
+                    .Invoke<PSVariable>()
+                    .Where(v => v.Options.HasFlag(ScopedItemOptions.AllScope))
+                    .ToDictionary(v => v.Name, StringComparer.OrdinalIgnoreCase);
             }
 
             if (s_wrapperCache.TryGetValue(_allScopes[name], out Expression cachedExpression))
@@ -1776,8 +1791,7 @@ namespace PSLambda
 
         private Type GetTypeForVariable(PSVariable variable)
         {
-            Type variableType;
-            if (SpecialVariables.AllScope.TryGetValue(variable.Name, out variableType))
+            if (SpecialVariables.AllScope.TryGetValue(variable.Name, out Type variableType))
             {
                 return variableType;
             }
@@ -1832,7 +1846,7 @@ namespace PSLambda
 
         private bool TryResolveConstant<TResult>(Ast ast, out TResult resolvedValue)
         {
-            object rawValue = null;
+            object rawValue;
             try
             {
                 rawValue = ast.SafeGetValue();
@@ -1843,7 +1857,7 @@ namespace PSLambda
                     ast.Extent,
                     nameof(ErrorStrings.UnexpectedExpression),
                     ErrorStrings.UnexpectedExpression);
-                resolvedValue = default(TResult);
+                resolvedValue = default;
                 return false;
             }
 

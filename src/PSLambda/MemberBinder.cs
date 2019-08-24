@@ -121,7 +121,7 @@ namespace PSLambda
             var isInstance = instance != null;
             var methods = sourceType.GetMethods(isInstance ? _instanceFlags : _staticFlags);
             MethodInfo boundMethod;
-            BindingResult bindingResult = default(BindingResult);
+            BindingResult bindingResult = default;
             for (var i = 0; i < methods.Length; i++)
             {
                 if (!methods[i].Name.Equals(name, StringComparison.InvariantCultureIgnoreCase))
@@ -635,15 +635,13 @@ namespace PSLambda
 
             public static explicit operator MethodArgument(Ast ast)
             {
-                var argument = new MethodArgument();
-                argument.Ast = ast;
+                var argument = new MethodArgument { Ast = ast };
                 return argument;
             }
 
             public static explicit operator MethodArgument(Expression expression)
             {
-                var argument = new MethodArgument();
-                argument.Expression = expression;
+                var argument = new MethodArgument { Expression = expression };
                 return argument;
             }
         }

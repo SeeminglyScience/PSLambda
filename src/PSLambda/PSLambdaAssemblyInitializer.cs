@@ -14,7 +14,7 @@ namespace PSLambda
         private const string GetPropertyName = "Get";
 
         /// <summary>
-        /// Attempts to create the type accelerator for <see cref="PSDelegate" />
+        /// Attempts to create the type accelerator for <see cref="PSDelegate" />.
         /// </summary>
         public void OnImport()
         {
@@ -30,8 +30,7 @@ namespace PSLambda
                 return;
             }
 
-            var existing = getProperty.GetValue(null) as Dictionary<string, Type>;
-            if (existing == null)
+            if (!(getProperty.GetValue(null) is Dictionary<string, Type> existing))
             {
                 return;
             }

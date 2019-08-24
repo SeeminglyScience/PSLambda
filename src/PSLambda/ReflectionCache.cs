@@ -184,19 +184,19 @@ namespace PSLambda
             typeof(Hashtable).GetMethod("Add", new[] { typeof(object), typeof(object) });
 
         /// <summary>
-        /// Resolves to <see cref="Hashtable.Hashtable(int, IEqualityComparer)" />
+        /// Resolves to <see cref="Hashtable.Hashtable(int, IEqualityComparer)" />.
         /// </summary>
         public static readonly ConstructorInfo Hashtable_Ctor =
             typeof(Hashtable).GetConstructor(new[] { typeof(int), typeof(IEqualityComparer) });
 
         /// <summary>
-        /// Resolves to <see cref="IEnumerator.get_Current" />
+        /// Resolves to <see cref="IEnumerator.get_Current" />.
         /// </summary>
         public static readonly MethodInfo IEnumerator_get_Current =
             typeof(IEnumerator).GetMethod(Strings.EnumeratorGetCurrentMethodName, Type.EmptyTypes);
 
         /// <summary>
-        /// Resolves to <see cref="IEnumerable.GetEnumerator" />
+        /// Resolves to <see cref="IEnumerable.GetEnumerator" />.
         /// </summary>
         public static readonly MethodInfo IEnumerable_GetEnumerator =
             typeof(IEnumerable).GetMethod(Strings.GetEnumeratorMethodName, Type.EmptyTypes);

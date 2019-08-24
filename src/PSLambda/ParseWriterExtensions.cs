@@ -43,7 +43,11 @@ namespace PSLambda
         {
             writer.ReportParseError(
                 extent,
-                nameof(ErrorStrings.ElementNotSupported),
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    "{0}.{1}",
+                    nameof(ErrorStrings.ElementNotSupported),
+                    id),
                 string.Format(
                     CultureInfo.CurrentCulture,
                     ErrorStrings.ElementNotSupported,
@@ -65,7 +69,11 @@ namespace PSLambda
         {
             writer.ReportParseError(
                 extent,
-                nameof(ErrorStrings.ElementMissing),
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    "{0}.{1}",
+                    nameof(ErrorStrings.ElementMissing),
+                    id),
                 string.Format(
                     CultureInfo.CurrentCulture,
                     ErrorStrings.ElementMissing,

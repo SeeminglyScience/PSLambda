@@ -30,22 +30,20 @@ namespace PSLambda.Commands
                 return Expression.Empty();
             }
 
-            Type resolvedType = null;
-
             // Is using syntax "default([TypeName])"
             if (commandAst.CommandElements[1] is ParenExpressionAst paren &&
                 paren.Pipeline is PipelineAst pipeline &&
                 pipeline.PipelineElements.Count == 1 &&
                 pipeline.PipelineElements[0] is CommandExpressionAst commandExpression &&
                 commandExpression.Expression is TypeExpressionAst &&
-                visitor.TryResolveType(commandExpression.Expression, out resolvedType))
+                visitor.TryResolveType(commandExpression.Expression, out Type resolvedType))
             {
                 return Expression.Default(resolvedType);
             }
 
             // Is using syntax "default TypeName"
             if (commandAst.CommandElements[1] is StringConstantExpressionAst stringConstant &&
-                LanguagePrimitives.TryConvertTo<Type>(stringConstant.Value, out resolvedType))
+                LanguagePrimitives.TryConvertTo(stringConstant.Value, out resolvedType))
             {
                 return Expression.Default(resolvedType);
             }
